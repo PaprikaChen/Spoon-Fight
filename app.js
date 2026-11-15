@@ -400,7 +400,7 @@ function F(defaults) {
 // =====================================================================
 // Rendering (UI v3). Every screen is built from plain words: what happened to you, and why.
 // =====================================================================
-const V = 'v10';
+const V = 'v11';
 const IMG = { art: `assets/key-art.jpg?v=${V}`, country: `assets/countryside.jpg?v=${V}`, city: `assets/city.jpg?v=${V}` };
 const STEPS = [['invest', 'Staff'], ['market', 'Market'], ['commit', 'Ads'], ['service', 'Service'], ['report', 'Recap']];
 // Day 1 has no Market (free food instead), and ads start on day CFG.adsFrom, so early days have fewer steps
@@ -738,22 +738,21 @@ function bunnyPic(s, width) {
 const tipDots = i => `<div class="dots">${[0, 1, 2].map(j => `<i class="${j === i ? 'on' : ''}"></i>`).join('')}</div>`;
 function hireTip(s, i) {
   const p = app.S.players[s], w = wageOf(p);
-  if (i === 0) return `<div class="hover2"><div class="rcard tipcard" role="dialog" aria-label="Hiring tip 1 of 3"><span class="tstep">Tip 1 of 3</span><p>You can't run your restaurant by yourself.</p><h2>Time to hire staff!</h2>
+  if (i === 0) return `<div class="hover2"><div class="rcard tipcard" role="dialog" aria-label="Hiring tip 1 of 3"><p>You can't run your restaurant by yourself.</p><h2>Time to hire staff!</h2>
     <div class="tfoot">${tipDots(0)}<button type="button" class="cta inline" data-act="hiretip">Next</button></div></div></div>`;
   if (i === 1) {
     // B: the screen darkens except one real section, a hand points at it, the bubble sits beside it. Clicking the section hires there and moves on.
     const r = RRService.sectionRect(p.loc, TIP_SEC), box = `left:${pct(r.x, r.W)};top:${pct(r.y, r.H)};width:${pct(r.w, r.W)};height:${pct(r.h, r.H)}`;
     return `<button type="button" class="tiphole" style="${box}" data-act="hiretip" data-hire="${TIP_SEC}" aria-label="Hire a server for this section">
         <svg class="tiphand" viewBox="0 0 40 48" aria-hidden="true"><path d="M14 4a4 4 0 0 1 8 0v16l3-1a4 4 0 0 1 5 3l1 0a4 4 0 0 1 5 4v8c0 8-6 13-14 13s-12-5-15-11l-5-9a4 4 0 0 1 6-4l4 4V4z" fill="#FFF7EC" stroke="#3A2A1E" stroke-width="2.5" stroke-linejoin="round"/></svg></button>
-      <div class="rcard tipbub" style="left:calc(${pct(r.x + r.w, r.W)} + 22px);top:${pct(r.y, r.H)}" role="dialog" aria-label="Hiring tip 2 of 3"><span class="tstep">Tip 2 of 3</span>
+      <div class="rcard tipbub" style="left:calc(${pct(r.x + r.w, r.W)} + 22px);top:${pct(r.y, r.H)}" role="dialog" aria-label="Hiring tip 2 of 3">
         <h3>Click on a "staff section" to hire a server.</h3>
-        <p>This is one section. It has <b>2 tables</b>, so it seats <b>2 guests</b>. Its server seats and serves them both.</p>
+        <p>This is one section with <b>2 tables</b>. Its server looks after those tables all night: seating each new guest and bringing their food.</p>
         <div class="tfoot">${tipDots(1)}<button type="button" class="cta inline" data-act="hiretip">Next</button></div></div>`;
   }
   // D: one big daily price
-  return `<div class="hover2"><div class="rcard tipcard pay" role="dialog" aria-label="Hiring tip 3 of 3"><span class="tstep">Tip 3 of 3</span><h2>Pay rate</h2>
+  return `<div class="hover2"><div class="rcard tipcard pay" role="dialog" aria-label="Hiring tip 3 of 3"><h2>Pay rate</h2>
     <div class="paygrid"><span class="tipbunbox">${bunnyPic(s, 140)}</span><div><div class="paybig">$${w}<small>/ day</small></div><div class="payper">for each server, every day you keep them</div></div></div>
-    <div class="payeg">🐰🐰 2 servers <span>→</span> <b>$${2 * w}</b> every morning</div>
     <div class="tfoot">${tipDots(2)}<button type="button" class="cta inline" data-act="hiretip">Start</button></div></div></div>`;
 }
 function buildHTML(s) {
@@ -777,7 +776,7 @@ function buildHTML(s) {
   const E = expectedDemand(p), guess = Math.max(0, Math.round(E.total)), sug = Math.min(nSec, Math.ceil(guess / CFG.service.perBunny));
   const warn = !day1 && after < CFG.service.foodWarn ? `<span class="hwarn">Only ${usd(after)} left for food at the Market.</span>` : '';
   const loan = !loanOn ? '' : `<button type="button" class="linkish" data-act="loan" data-v="${f.loan ? 0 : 1}">${f.loan ? `Loan taken: +$${CFG.loan.amount} (pay back $${CFG.loan.repay}). Undo` : `Take a $${CFG.loan.amount} loan (pay back $${CFG.loan.repay} at the end)`}</button>`;
-  const sub = day1 ? `Click a section to hire a server. Each one seats and serves ${CFG.staff.perSection} guests.`
+  const sub = day1 ? `Click a section to hire a server. Each server looks after the ${CFG.staff.perSection} tables in their section.`
     : `Your staff from yesterday are still here. Click a section to hire, or click a bunny to let them go ($${CFG.staff.fire} to say goodbye).`;
   const change = needChoice ? `<span class="hnote">${f.choice === 'accept' ? `You took the $${CFG.shady.cash}.` : 'You said no to the deal.'} <button class="linkish" data-act="stage" data-v="offer-back">Change</button></span>` : '';
   const card = `<b class="htitle">Hire staff</b>
