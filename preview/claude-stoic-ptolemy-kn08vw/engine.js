@@ -449,7 +449,9 @@ function apply(S, got) {
       S.commits = {}; S.reveals = {};
       for (const s of SEATS) {
         const a = got[s], sh = S.shops[s];
-        S.commits[s] = { h: String(a.h), nSelf: intIn(a.nSelf, 0, sh.self.length), nRival: intIn(a.nRival, 0, sh.rival.length) };
+        const p = S.players[s], cost = Math.min(intIn(a.cost, 0, 999), Math.max(0, Math.floor(p.cash)));
+        S.commits[s] = { h: String(a.h), nSelf: intIn(a.nSelf, 0, sh.self.length), nRival: intIn(a.nRival, 0, sh.rival.length), cost };
+        if (cost) money(p, `Ads ×${S.commits[s].nSelf + S.commits[s].nRival}`, -cost);
       }
       S.phase = 'invest'; break;   // staff and market next; the cards flip after the market
     }
@@ -457,12 +459,9 @@ function apply(S, got) {
       for (const s of SEATS) {
         const p = S.players[s], a = got[s], cm = S.commits[s], sh = S.shops[s];
         let c = { self: validCards(a.self, sh.self), rival: validCards(a.rival, sh.rival) };
-        let ok = !!(c.self && c.rival) && adHash(c, a.salt) === cm.h && c.self.length === cm.nSelf && c.rival.length === cm.nRival;
-        // A failed check makes every card do nothing (and cost nothing)
-        if (!ok) c = { self: [], rival: [] };
-        while (adCost(c) > Math.max(0, p.cash)) (c.rival.length ? c.rival : c.self).pop();
-        const cost = adCost(c);
-        if (cost) money(p, `Ad cards ×${c.self.length + c.rival.length}`, -cost);
+        let ok = !!(c.self && c.rival) && adHash(c, a.salt) === cm.h && c.self.length === cm.nSelf && c.rival.length === cm.nRival && adCost(c) === cm.cost;
+        // A failed check (wrong cards, or a price that doesn't match what was paid) makes every ad do nothing, and the money comes back
+        if (!ok) { c = { self: [], rival: [] }; if (cm.cost) money(p, 'Ads refunded', cm.cost); }
         S.reveals[s] = { ...c, ok };
       }
       toService(S); break;

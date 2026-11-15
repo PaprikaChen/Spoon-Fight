@@ -236,7 +236,7 @@ async function commitCards(s, k, c) {
     lsSet('ad:' + privKey(s, r), JSON.stringify(priv));
     try { await app.fb.set(`users/${app.uid}/ads/${app.code}-r${r}`, priv); } catch (e) {}
   }
-  act(s, { k, h: adHash(c, priv.salt), nSelf: c.self.length, nRival: c.rival.length });
+  act(s, { k, h: adHash(c, priv.salt), nSelf: c.self.length, nRival: c.rival.length, cost: adCost(c) });
 }
 async function doReveal(s, k, r) {
   let priv = app.priv[privKey(s, r)];
@@ -400,7 +400,7 @@ function F(defaults) {
 // =====================================================================
 // Rendering (UI v3). Every screen is built from plain words: what happened to you, and why.
 // =====================================================================
-const V = 'v24';
+const V = 'v25';
 const IMG = { art: `assets/key-art.jpg?v=${V}`, country: `assets/countryside.jpg?v=${V}`, city: `assets/city.jpg?v=${V}` };
 const STEPS = [['commit', 'Ads'], ['invest', 'Staff'], ['market', 'Market'], ['service', 'Service'], ['report', 'Recap']];
 // Day 1 has no Market (free food instead), and ads start on day CFG.adsFrom (then they are the first step), so early days have fewer steps
@@ -409,8 +409,7 @@ const stepOf = p => ({ morning: app.S && app.S.round >= CFG.adsFrom ? 'commit' :
 // Cards are paid when they flip (after the Market), so until then the page keeps their price aside
 function adReserve(s) {
   const S = app.S;
-  if (!S || S.round < CFG.adsFrom || !['invest', 'market'].includes(S.phase)) return 0;
-  const c = myCards(s); return c ? adCost(c) : 0;
+  return 0; // ads are paid in the Ads step now, so nothing is kept aside
 }
 // What a player knows before the flip: how many cards the rival placed on them, not which
 function rivalCardsNote(s) {
@@ -785,7 +784,7 @@ function hireTip(s, i) {
 function buildHTML(s) {
   const S = app.S, p = S.players[s], o = other(s), k = S.waiting[s], e = S.events[s], M = CFG.market;
   const day1 = S.round === 1 && CFG.freeFood, nSec = sectionsOf(p), w = wageOf(p);
-  const head = (h, sub) => `<div class="hhead"><div class="fh"><h1 class="funt">${h}</h1><span class="fsub">${sub}</span></div><div class="hpills">${rivalCardsNote(s)}${morningLine(s)}</div></div>`;
+  const head = (h) => `<div class="hhead"><div class="fh"><h1 class="funt">${h}</h1></div></div>`;
   if (!k) {
     const g = S.got[s] || {}, bits = [];
     if (e.type === 'shady' && g.choice) bits.push(g.choice === 'accept' ? 'take the shady deal' : 'say no to the shady deal');
