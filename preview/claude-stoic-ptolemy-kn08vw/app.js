@@ -400,7 +400,7 @@ function F(defaults) {
 // =====================================================================
 // Rendering (UI v3). Every screen is built from plain words: what happened to you, and why.
 // =====================================================================
-const V = 'v11';
+const V = 'v12';
 const IMG = { art: `assets/key-art.jpg?v=${V}`, country: `assets/countryside.jpg?v=${V}`, city: `assets/city.jpg?v=${V}` };
 const STEPS = [['invest', 'Staff'], ['market', 'Market'], ['commit', 'Ads'], ['service', 'Service'], ['report', 'Recap']];
 // Day 1 has no Market (free food instead), and ads start on day CFG.adsFrom, so early days have fewer steps
@@ -736,10 +736,12 @@ function bunnyPic(s, width) {
   return RRService.floorPlan(p.loc, [TIP_SEC], look.animal, look.color).replace(/viewBox="[^"]*"/, `viewBox="${vb}"`).replace('class="rrplan"', `class="tipbun" width="${width}"`).replace(/<rect class="sec-hit"[^>]*\/>/g, '');
 }
 const tipDots = i => `<div class="dots">${[0, 1, 2].map(j => `<i class="${j === i ? 'on' : ''}"></i>`).join('')}</div>`;
+// A small grey Back next to Next, from the second tip on
+const tipBtns = (i, label) => `<span class="tbtns">${i ? '<button type="button" class="tback" data-act="hiretipback">Back</button>' : ''}<button type="button" class="cta inline" data-act="hiretip">${label}</button></span>`;
 function hireTip(s, i) {
   const p = app.S.players[s], w = wageOf(p);
   if (i === 0) return `<div class="hover2"><div class="rcard tipcard" role="dialog" aria-label="Hiring tip 1 of 3"><p>You can't run your restaurant by yourself.</p><h2>Time to hire staff!</h2>
-    <div class="tfoot">${tipDots(0)}<button type="button" class="cta inline" data-act="hiretip">Next</button></div></div></div>`;
+    <div class="tfoot">${tipDots(0)}${tipBtns(0, 'Next')}</div></div></div>`;
   if (i === 1) {
     // B: the screen darkens except one real section, a hand points at it, the bubble sits beside it. Clicking the section hires there and moves on.
     const r = RRService.sectionRect(p.loc, TIP_SEC), box = `left:${pct(r.x, r.W)};top:${pct(r.y, r.H)};width:${pct(r.w, r.W)};height:${pct(r.h, r.H)}`;
@@ -748,12 +750,12 @@ function hireTip(s, i) {
       <div class="rcard tipbub" style="left:calc(${pct(r.x + r.w, r.W)} + 22px);top:${pct(r.y, r.H)}" role="dialog" aria-label="Hiring tip 2 of 3">
         <h3>Click on a "staff section" to hire a server.</h3>
         <p>This is one section with <b>2 tables</b>. Its server looks after those tables all night: seating each new guest and bringing their food.</p>
-        <div class="tfoot">${tipDots(1)}<button type="button" class="cta inline" data-act="hiretip">Next</button></div></div>`;
+        <div class="tfoot">${tipDots(1)}${tipBtns(1, 'Next')}</div></div>`;
   }
   // D: one big daily price
   return `<div class="hover2"><div class="rcard tipcard pay" role="dialog" aria-label="Hiring tip 3 of 3"><h2>Pay rate</h2>
     <div class="paygrid"><span class="tipbunbox">${bunnyPic(s, 140)}</span><div><div class="paybig">$${w}<small>/ day</small></div><div class="payper">for each server, every day you keep them</div></div></div>
-    <div class="tfoot">${tipDots(2)}<button type="button" class="cta inline" data-act="hiretip">Start</button></div></div></div>`;
+    <div class="tfoot">${tipDots(2)}${tipBtns(2, 'Start')}</div></div></div>`;
 }
 function buildHTML(s) {
   const S = app.S, p = S.players[s], o = other(s), k = S.waiting[s], e = S.events[s], M = CFG.market;
@@ -1331,6 +1333,7 @@ document.addEventListener('click', e => {
     case 'choose': { const f = F({}); f.choice = b.dataset.c; return render(); }
     case 'stage': { const f = F({}), v = b.dataset.v; if (v === 'gift') f.gift = true; else if (v === 'offer') f.offer = true; else if (v === 'offer-back') f.offer = false; return render(); }
     case 'loan': { const f = F({}); f.loan = b.dataset.v === '1'; return render(); }
+    case 'hiretipback': { const f = F({}); f.tip = Math.max(0, (f.tip || 0) - 1); return render(); }
     case 'hiretip': {
       const f = F({}); f.tip = (f.tip || 0) + 1;
       // Clicking the lit section in tip 2 also hires a server there
