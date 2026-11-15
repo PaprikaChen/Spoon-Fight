@@ -257,5 +257,122 @@ const ART = (() => {
   const GOAL_ALT = ['The Golden Spoon trophy, then the key to the Two Spoons', 'Earn the most money by the end of the last day', 'Five stars, each worth a money bonus at the end', 'You and your rival face each other; the rival hides a card'];
   const goal = (i, rival, days, per) => `<svg class="storyart goalart" viewBox="0 0 720 400" role="img" aria-label="${GOAL_ALT[i]}">${GOAL[i](rival, days, per)}</svg>`;
   const spoonMark = (flip) => `<svg class="spoonmark" viewBox="0 0 22 34" aria-hidden="true" style="transform:${flip ? 'scaleX(-1) ' : ''}rotate(-20deg)"><ellipse cx="11" cy="9" rx="7" ry="8" fill="none" stroke="#FFD21F" stroke-width="3"/><path d="M11 17v15" stroke="#FFD21F" stroke-width="3" stroke-linecap="round"/></svg>`;
-  return { icon, star, stars, plate, floor, badge, story, room, gift, goal, spoonMark };
+
+  // ---------- pick screen: the two restaurants (drawn to match the key art and Service; prototypes/location-art) ----------
+  const place = (() => {
+    const O = '#2B1D14', SW = 4;
+    const outl = (w = SW) => `stroke="${O}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
+    // scalloped awning like the key art: stripes + half-circle edge
+    function awning(x, y, w, h, c1, c2, n) {
+      const sw = w / n; let s = '';
+      for (let i = 0; i < n; i++) {
+        const c = i % 2 ? c2 : c1, xx = x + i * sw;
+        s += `<path d="M${xx} ${y} h${sw} l${sw * 0.18} ${h} h${-sw * 1.36} z" fill="${c}"/>`;
+        s += `<path d="M${xx - sw * 0.18} ${y + h} a${sw * 0.68} ${sw * 0.55} 0 0 0 ${sw * 1.36} 0z" fill="${c}" ${outl(3)}/>`;
+      }
+      return s + `<path d="M${x} ${y} h${w} l${sw * 0.18} ${h} h${-w - sw * 0.36}z" fill="none" ${outl()}/>`;
+    }
+    // a little outdoor table with a red-check cloth and two chairs
+    const table = (x, y, cloth = '#E8392B') => `<g transform="translate(${x} ${y})">
+      ${[-1, 1].map(d => `<g transform="translate(${d * 58} 0) scale(${d} 1)"><path d="M10 -18 v58" stroke="#8A5A3A" stroke-width="7" stroke-linecap="round"/><path d="M10 -18 v58" stroke="${O}" stroke-width="2" opacity="0"/><rect x="-14" y="16" width="28" height="8" rx="3" fill="#B7713F" ${outl(3)}/><path d="M-11 24 v16 M8 24 v16" stroke="${O}" stroke-width="4" stroke-linecap="round"/><rect x="5" y="-20" width="10" height="40" rx="4" fill="#B7713F" ${outl(3)}/></g>`).join('')}
+      <path d="M-34 0 h68 l6 26 h-80z" fill="#FFFDF7" ${outl()}/>
+      ${[-28, -14, 0, 14].map(dx => `<rect x="${dx}" y="2" width="7" height="22" fill="${cloth}" opacity=".85"/>`).join('')}
+      <path d="M-34 8 h68 M-36 16 h72" stroke="${cloth}" stroke-width="4" opacity=".55"/>
+      <path d="M-34 0 h68 l6 26 h-80z" fill="none" ${outl()}/>
+      <rect x="-4" y="26" width="8" height="18" fill="#7A4A2A" ${outl(2.5)}/>
+      <circle cx="-10" cy="-6" r="7" fill="#FFFDF7" ${outl(2.5)}/><path d="M12 -14 v-10" stroke="#7FB069" stroke-width="3"/><circle cx="12" cy="-26" r="5" fill="#FFD21F" ${outl(2)}/></g>`;
+    const flower = (x, y, c) => `<g transform="translate(${x} ${y})"><path d="M0 0 v-16" stroke="#3E7D3A" stroke-width="3"/>${[0, 72, 144, 216, 288].map(a => `<ellipse cx="0" cy="-22" rx="4" ry="6" fill="${c}" transform="rotate(${a} 0 -16)"/>`).join('')}<circle cy="-16" r="3" fill="#FFD21F"/></g>`;
+    const lamp = (x, y, h) => `<g transform="translate(${x} ${y})"><rect x="-4" y="${-h}" width="8" height="${h}" fill="#3A3A40" ${outl(3)}/><path d="M-14 ${-h - 30} h28 l-5 30 h-18z" fill="#FFE08A" ${outl(3)}/><path d="M-16 ${-h - 30} h32 l-8 -10 h-16z" fill="#3A3A40" ${outl(3)}/><circle cx="0" cy="${-h - 15}" r="26" fill="#FFE08A" opacity=".25"/></g>`;
+
+
+    // ================= COUNTRYSIDE =================
+    function countryArt() {
+      let s = '';
+      s += `<defs><linearGradient id="sky1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9FD8F0"/><stop offset="1" stop-color="#FDF1D6"/></linearGradient></defs>`;
+      s += `<rect width="1050" height="400" fill="url(#sky1)"/>`;
+      s += `<circle cx="140" cy="70" r="34" fill="#FFD21F" ${outl()}/>`;
+      s += [[60, 60], [300, 40], [880, 70]].map(([x, y]) => `<path d="M${x} ${y} a18 18 0 0 1 30 -10 a22 22 0 0 1 40 6 a14 14 0 0 1 4 26 h-70 a14 14 0 0 1 -4 -22z" fill="#fff" ${outl(3)}/>`).join('');
+      // hills, barn, windmill
+      s += `<path d="M0 230 q160 -90 330 -10 q160 -90 360 0 q200 -100 360 -10 v190 h-1050z" fill="#9BCB74" ${outl()}/>`;
+      s += `<path d="M0 270 q250 -60 520 -6 q280 -50 530 -10 v146 h-1050z" fill="#7FB069" ${outl()}/>`;
+      s += `<g transform="translate(870 150)"><path d="M0 60 v-46 l40 -26 l40 26 v46z" fill="#D9534F" ${outl()}/><rect x="28" y="28" width="24" height="32" fill="#FFFDF7" ${outl(3)}/><path d="M28 28 l24 32 M52 28 l-24 32" stroke="${O}" stroke-width="3"/></g>`;
+      s += `<g transform="translate(985 175)"><rect x="-5" y="-60" width="10" height="66" fill="#8A5A3A" ${outl(3)}/>${[0, 90, 180, 270].map(a => `<rect x="-4" y="-104" width="8" height="44" fill="#FFFDF7" ${outl(2.5)} transform="rotate(${a + 20} 0 -60)"/>`).join('')}<circle cy="-60" r="6" fill="#3A3A40"/></g>`;
+      // the cottage restaurant
+      s += `<g>`;
+      s += `<rect x="300" y="120" width="450" height="200" fill="#F3D7A6" ${outl()}/>`;
+      s += [0, 1, 2, 3, 4, 5, 6].map(i => `<path d="M300 ${148 + i * 26} h450" stroke="#D8B27A" stroke-width="3"/>`).join('');
+      s += `<rect x="300" y="120" width="450" height="200" fill="none" ${outl()}/>`;
+      s += `<path d="M280 128 l245 -92 l245 92z" fill="#C0392B" ${outl()}/>`;
+      s += [0, 1, 2, 3].map(i => `<path d="M${330 + i * 30} ${110 - i * 11} l${390 - i * 60} 0" stroke="#A93226" stroke-width="3"/>`).join('');
+      s += `<rect x="640" y="28" width="34" height="56" fill="#B66D44" ${outl()}/><path d="M650 20 q8 -14 0 -26 q-6 -10 4 -18" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".8"/>`;
+      // sign
+      s += `<g transform="translate(525 92)"><path d="M-30 -24 v-8 M30 -24 v-8" stroke="${O}" stroke-width="3"/><rect x="-110" y="-24" width="220" height="44" rx="10" fill="#E8A35C" ${outl()}/><circle cx="-96" cy="-2" r="4" fill="${O}"/><circle cx="96" cy="-2" r="4" fill="${O}"/><text y="10" text-anchor="middle" font-family="Luckiest Guy" font-size="28" fill="${O}">RESTAURANT</text></g>`;
+      // windows with warm light and flower boxes
+      for (const x of [330, 640]) {
+        s += `<rect x="${x}" y="170" width="80" height="70" rx="6" fill="#FFE7A3" ${outl()}/><path d="M${x + 40} 170 v70 M${x} 205 h80" stroke="${O}" stroke-width="4"/>`;
+        s += `<rect x="${x - 6}" y="240" width="92" height="18" rx="4" fill="#8A5A3A" ${outl(3)}/>` + [10, 30, 50, 70].map((dx, i) => `<circle cx="${x + dx}" cy="238" r="7" fill="${['#F06292', '#FFD21F', '#BA68C8', '#FF8A65'][i]}" ${outl(2)}/>`).join('');
+      }
+      // door + awning
+      s += `<rect x="480" y="190" width="90" height="130" rx="8" fill="#9C5B33" ${outl()}/><rect x="492" y="202" width="66" height="50" rx="5" fill="#FFE7A3" ${outl(3)}/><circle cx="556" cy="275" r="5" fill="#FFD21F" ${outl(2)}/>`;
+      s += awning(445, 148, 160, 32, '#E8392B', '#FFFDF7', 6);
+      s += `</g>`;
+      // flagstone path
+      s += `<path d="M470 320 h110 l90 80 h-290z" fill="#C9B79A" ${outl()}/>`;
+      s += [[505, 340, 26], [555, 345, 22], [495, 372, 30], [565, 378, 32], [620, 392, 24], [450, 392, 22]].map(([x, y, r]) => `<ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r * 0.42}" fill="#E8DCC4" ${outl(3)}/>`).join('');
+      // tables, flowers, bunny, lamp
+      s += table(230, 330) + table(820, 330);
+      s += lamp(150, 330, 80);
+      s += [[60, 380, '#F06292'], [95, 360, '#FFD21F'], [130, 385, '#BA68C8'], [700, 392, '#FF8A65'], [740, 372, '#F06292'], [960, 380, '#FFD21F'], [995, 395, '#BA68C8'], [320, 392, '#FFD21F'], [420, 386, '#F06292']].map(a => flower(...a)).join('');
+      return s;
+    }
+
+    // ================= CITY =================
+    function cityArt() {
+      let s = '';
+      s += `<defs><linearGradient id="sky2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7C6CC9"/><stop offset=".6" stop-color="#F29E8E"/><stop offset="1" stop-color="#FDD9A8"/></linearGradient></defs>`;
+      s += `<rect width="1050" height="400" fill="url(#sky2)"/>`;
+      // skyline
+      const tall = [[0, 140, 90, '#5B5FA8'], [80, 90, 70, '#6E74C2'], [140, 150, 80, '#4E528F'], [700, 110, 80, '#4E528F'], [770, 60, 90, '#6E74C2'], [850, 130, 70, '#5B5FA8'], [910, 80, 80, '#4E528F'], [980, 150, 70, '#6E74C2']];
+      for (const [x, y, w, c] of tall) {
+        s += `<rect x="${x}" y="${y}" width="${w}" height="${300 - y}" fill="${c}" ${outl()}/>`;
+        for (let yy = y + 16; yy < 270; yy += 24) for (let xx = x + 12; xx < x + w - 14; xx += 20) s += `<rect x="${xx}" y="${yy}" width="10" height="12" fill="${(xx * 7 + yy) % 3 ? '#FFE08A' : '#3D4070'}"/>`;
+      }
+      s += `<path d="M780 60 v-30" stroke="${O}" stroke-width="4"/><circle cx="780" cy="28" r="5" fill="#E8392B"/>`;
+      // the shop building
+      s += `<rect x="230" y="70" width="480" height="250" fill="#F2E3D0" ${outl()}/>`;
+      s += [0, 1, 2, 3, 4, 5, 6, 7].map(i => `<path d="M230 ${98 + i * 28} h480" stroke="#E2CDB4" stroke-width="2"/>`).join('');
+      s += `<rect x="230" y="70" width="480" height="250" fill="none" ${outl()}/>`;
+      s += `<rect x="222" y="60" width="496" height="18" fill="#3A3A40" ${outl()}/>`;
+      // upstairs windows
+      for (const x of [270, 400, 530, 640]) s += `<rect x="${x}" y="92" width="44" height="46" rx="4" fill="#BFE3F2" ${outl(3)}/><path d="M${x + 22} 92 v46" stroke="${O}" stroke-width="3"/>`;
+      // sign
+      s += `<g transform="translate(470 172)"><rect x="-130" y="-22" width="260" height="44" rx="10" fill="#1F2A2E" ${outl()}/><text y="10" text-anchor="middle" font-family="Luckiest Guy" font-size="28" fill="#5EEAD4">RESTAURANT</text></g>`;
+      // big shop windows, warm light, diners' silhouettes
+      for (const x of [252, 572]) {
+        s += `<rect x="${x}" y="226" width="116" height="80" rx="6" fill="#FFE7A3" ${outl()}/>`;
+        s += `<circle cx="${x + 34}" cy="262" r="10" fill="#C98B5E" opacity=".55"/><path d="M${x + 22} 290 q12 -22 24 0" fill="#C98B5E" opacity=".55"/><circle cx="${x + 80}" cy="262" r="10" fill="#C98B5E" opacity=".55"/><path d="M${x + 68} 290 q12 -22 24 0" fill="#C98B5E" opacity=".55"/>`;
+        s += `<rect x="${x + 40}" y="282" width="36" height="6" fill="#E8392B"/><path d="M${x} 288 h116" stroke="${O}" stroke-width="3"/>`;
+      }
+      // door + teal/white awning (the City's colours in Service)
+      s += `<rect x="420" y="220" width="100" height="100" rx="6" fill="#20807A" ${outl()}/><rect x="434" y="232" width="72" height="58" rx="4" fill="#FFE7A3" ${outl(3)}/><circle cx="508" cy="300" r="5" fill="#FFD21F" ${outl(2)}/>`;
+      s += awning(236, 196, 468, 30, '#14B8A6', '#FFFDF7', 12);
+      // OPEN neon
+      s += `<g transform="translate(660 172)"><rect x="-40" y="-16" width="80" height="32" rx="16" fill="#2B1D2E" ${outl(3)}/><text y="7" text-anchor="middle" font-family="Inter" font-weight="800" font-size="16" fill="#FF7AB6" letter-spacing="2">OPEN</text></g>`;
+      // pavement + street + bike lane
+      s += `<rect x="0" y="320" width="1050" height="34" fill="#D9D4CC" ${outl()}/>`;
+      s += [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(i => `<path d="M${i * 84} 320 v34" stroke="#BDB7AD" stroke-width="3"/>`).join('');
+      s += `<rect x="0" y="354" width="1050" height="16" fill="#2DD4BF" ${outl(3)}/>`;
+      s += `<rect x="0" y="370" width="1050" height="30" fill="#3A3A40"/>` + [0, 1, 2, 3, 4, 5, 6].map(i => `<rect x="${30 + i * 160}" y="383" width="70" height="6" rx="3" fill="#FFE08A"/>`).join('');
+      s += `<g transform="translate(160 362)"><circle r="6" fill="none" stroke="#fff" stroke-width="2.5"/><circle cx="18" r="6" fill="none" stroke="#fff" stroke-width="2.5"/><path d="M0 0 l8 -9 h8 l2 9 M8 -9 l-3 -4" stroke="#fff" stroke-width="2.5" fill="none"/></g>`;
+      // tables, planters, lamps, bunny
+      s += table(150, 300, '#14B8A6') + table(800, 300, '#14B8A6');
+      s += lamp(60, 330, 120) + lamp(990, 330, 120);
+      s += `<g transform="translate(900 316)"><rect x="-22" y="-26" width="44" height="30" rx="4" fill="#20807A" ${outl(3)}/><circle cx="-10" cy="-34" r="12" fill="#3E9A5A" ${outl(3)}/><circle cx="10" cy="-36" r="14" fill="#4CAF6A" ${outl(3)}/></g>`;
+      return s;
+    }
+    const ALT = { country: 'A wooden cottage restaurant with a red-and-white awning, a flagstone path, wildflowers and a farm on the hills behind',
+      city: 'A city restaurant with a teal-and-white awning and an OPEN sign, on a street with a bike lane and tall buildings behind' };
+    return loc => `<svg class="placeart" viewBox="0 0 1050 400" preserveAspectRatio="xMidYMid slice" role="img" aria-label="${ALT[loc === 'city' ? 'city' : 'country']}">${loc === 'city' ? cityArt() : countryArt()}</svg>`;
+  })();
+  return { icon, star, stars, plate, floor, badge, story, room, gift, goal, spoonMark, place };
 })();

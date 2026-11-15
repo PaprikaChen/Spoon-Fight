@@ -114,7 +114,6 @@ function chef(x, y, kind, wave) {
   s += table(230, 330) + table(820, 330);
   s += lamp(150, 330, 80);
   s += [[60, 380, '#F06292'], [95, 360, '#FFD21F'], [130, 385, '#BA68C8'], [700, 392, '#FF8A65'], [740, 372, '#F06292'], [960, 380, '#FFD21F'], [995, 395, '#BA68C8'], [320, 392, '#FFD21F'], [420, 386, '#F06292']].map(a => flower(...a)).join('');
-  s += chef(440, 298, 'cat', 'left') + chef(612, 298, 'dog', 'right');
   document.getElementById('country').innerHTML = s;
 }
 
@@ -160,7 +159,6 @@ function chef(x, y, kind, wave) {
   s += table(150, 300, '#14B8A6') + table(800, 300, '#14B8A6');
   s += lamp(60, 330, 120) + lamp(990, 330, 120);
   s += `<g transform="translate(900 316)"><rect x="-22" y="-26" width="44" height="30" rx="4" fill="#20807A" ${outl(3)}/><circle cx="-10" cy="-34" r="12" fill="#3E9A5A" ${outl(3)}/><circle cx="10" cy="-36" r="14" fill="#4CAF6A" ${outl(3)}/></g>`;
-  s += chef(370, 288, 'cat', 'left') + chef(572, 288, 'dog', 'right');
   document.getElementById('city').innerHTML = s;
 }
 </script>

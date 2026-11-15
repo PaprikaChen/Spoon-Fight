@@ -20,7 +20,7 @@ A two-player web game that teaches restaurant management to players aged 13+. It
 | `art.js` | SVG drawings, display only: `ART.icon(name)` small icons, `ART.stars(n)`, `ART.plate()`, card art and story pictures. (`ART.room()` / `ART.floor()` are the old table floor plans, no longer used by Build or Service) |
 | `service.js` | The real-time service and the hire-staff floor plan (`window.RRService`: `create(host, opts)`, `floorPlan(loc, staff, animal, color)`). **Generated** from the tested prototype `prototypes/service-feel/index.html` (art: face style A, Countryside and City finals). Display and timing only: it never decides who comes, the engine does |
 | `style.css` | Styles (UI v3, "minimal premium"); colors are `:root` tokens with light and dark themes. You = cobalt `--you`, rival = magenta `--rival`, main buttons use the logo red (`.cta`), celebration numbers use the gold logo lettering (`.gold`) |
-| `assets/` | `key-art.jpg` (landing + final results), `logo.jpg` (header), `countryside.jpg` / `city.jpg` (pick screen) |
+| `assets/` | `key-art.jpg` (landing + final results), `logo.jpg` (header), `countryside.jpg` / `city.jpg` (old pick-screen photos, no longer used: the pick screen now draws `ART.place(loc)`, from `prototypes/location-art`) |
 | `docs/mockups/` | The earlier agreed design for every screen (PNG) |
 | `docs/uiux-v2-changes.md` | The UI/UX v2 changes (agreed on the mockup canvas): what each screen does now and why. Match this when changing the UI |
 | `index.html` | Entry; loads `firebase-config.js` → `engine.js` → `app.js` |
