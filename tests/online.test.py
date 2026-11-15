@@ -16,7 +16,7 @@ async def _step(pg, state):
     if ph == 'invest':
         if await pg.locator('[data-act=choose]').count() and not await pg.locator('[data-act=stage]').count(): await pg.locator('[data-act=choose]').first.click(); return  # pick an answer once, then continue
         if await pg.locator('[data-act=stage]:not([data-v=offer-back])').count(): await pg.locator('[data-act=stage]:not([data-v=offer-back])').first.click(); return  # gift screen, then the offer card
-        if await pg.locator('[data-act=hiretip]').count(): await pg.locator('[data-act=hiretip]').click(); return  # day 1: the three hiring tips
+        if await pg.locator('[data-act=hiretip]').count(): await pg.locator('[data-act=hiretip]').last.click(); return  # day 1: the three hiring tips (tip 2 has two: the lit section and Next)
         hires = state.setdefault('hires', {})
         if hires.get(id(pg)) != (await pg.evaluate('__rr.S.round')) and await pg.locator('[data-act=hire]').count():
             hires[id(pg)] = await pg.evaluate('__rr.S.round'); await pg.locator('[data-act=hire]').nth(1).click(); return  # hire (or let go) one bunny each day

@@ -400,7 +400,7 @@ function F(defaults) {
 // =====================================================================
 // Rendering (UI v3). Every screen is built from plain words: what happened to you, and why.
 // =====================================================================
-const V = 'v18';
+const V = 'v19';
 const IMG = { art: `assets/key-art.jpg?v=${V}`, country: `assets/countryside.jpg?v=${V}`, city: `assets/city.jpg?v=${V}` };
 const STEPS = [['commit', 'Ads'], ['invest', 'Staff'], ['market', 'Market'], ['service', 'Service'], ['report', 'Recap']];
 // Day 1 has no Market (free food instead), and ads start on day CFG.adsFrom (then they are the first step), so early days have fewer steps
@@ -685,7 +685,7 @@ function pickHTML(s) {
     return `<button type="button" class="pickc${on ? ' on' : ''}" data-act="picksel" data-loc="${loc}" aria-pressed="${on}">
       <span class="pic"><img src="${IMG[loc === 'city' ? 'city' : 'country']}" alt="${loc === 'city' ? 'A busy city restaurant with skyscrapers and a train behind it' : 'A cosy stone restaurant with a farm and cows behind it'}">${on ? '<span class="chip">Selected</span>' : ''}</span>
       <span class="in"><span class="nm"><b>${L.name}</b><span>${loc === 'city' ? 'Fewer seats, bigger bills' : 'More seats, cheaper'}</span></span>
-        <span class="stats">${tile(L.tables, 'tables')}${tile('$' + L.price, 'per guest')}${tile('$' + (CFG.startCash - L.open - L.rent), 'left after opening')}</span></span></button>`;
+        <span class="stats">${tile(L.tables, 'tables')}${tile('$' + L.price, 'per guest')}${tile('$' + L.open, 'to open')}</span></span></button>`;
   };
   return `<div class="pick-title"><h1>Where will you open?</h1><p class="muted">The contest gives you $${CFG.startCash} and an empty space. Pick one.</p></div>
     <div class="picks">${card('country')}${card('city')}</div>
