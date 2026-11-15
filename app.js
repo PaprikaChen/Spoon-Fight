@@ -400,7 +400,7 @@ function F(defaults) {
 // =====================================================================
 // Rendering (UI v3). Every screen is built from plain words: what happened to you, and why.
 // =====================================================================
-const V = 'v28';
+const V = 'v29';
 const IMG = { art: `assets/key-art.jpg?v=${V}`, country: `assets/countryside.jpg?v=${V}`, city: `assets/city.jpg?v=${V}` };
 const STEPS = [['commit', 'Ads'], ['invest', 'Staff'], ['market', 'Market'], ['service', 'Service'], ['report', 'Recap']];
 // Day 1 has no Market (free food instead), and ads start on day CFG.adsFrom (then they are the first step), so early days have fewer steps
@@ -1380,7 +1380,20 @@ async function shareSummary() {
   try {
     if (!window.html2canvas) await new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'vendor/html2canvas-1.4.1.min.js'; sc.onload = ok; sc.onerror = no; document.head.appendChild(sc); });
     const bg = getComputedStyle(document.body).backgroundColor;
-    const canvas = await window.html2canvas(el, { backgroundColor: bg, scale: Math.min(2, window.devicePixelRatio || 1), ignoreElements: n => n.dataset && n.dataset.act === 'share' });
+    // html2canvas redraws the page itself and misses a few styles, so the copy it draws is simplified first:
+    // the top picture is cropped as a background (no object-fit there), shadows go (they leave white corners),
+    // and the buttons, the "playing as" strip and the folded day table are left out of the picture.
+    const onclone = doc => {
+      const st = doc.createElement('style');
+      st.textContent = '*{box-shadow:none!important;filter:none!important} .again,.daylog,.strip,[data-act=share]{display:none!important} .final-mid{grid-template-columns:1fr!important}';
+      doc.head.appendChild(st);
+      doc.querySelectorAll('.final-hero > img').forEach(img => {
+        const hero = img.parentElement;
+        Object.assign(hero.style, { backgroundImage: `url("${img.src}")`, backgroundSize: 'cover', backgroundPosition: '50% 22%' });
+        img.remove();
+      });
+    };
+    const canvas = await window.html2canvas(el, { backgroundColor: bg, scale: Math.min(2, window.devicePixelRatio || 1), onclone });
     const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
     const file = new File([blob], 'spoon-fight-result.png', { type: 'image/png' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Spoon Fight' }); return; }
