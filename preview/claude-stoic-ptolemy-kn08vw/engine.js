@@ -28,20 +28,20 @@ const CFG = {
   // Every card can be bought once. All cards go face down; the other player only sees how many.
   shop: { loc: 1, general: 2, rival: 3 },
   ads: {
-    delivery: { side: 'self', loc: 'city', name: 'Delivery app spotlight', price: 6, n: 2, desc: '+2 delivery orders: they use food but no table' },
-    lunch:    { side: 'self', loc: 'city', name: 'Office lunch deal', price: 4, n: 3, off: 4, desc: '3 guests for sure, each pays $4 less' },
-    subway:   { side: 'self', loc: 'city', name: 'Subway poster', price: 10, n: 4, low: 2, lowChance: 0.3, desc: '+4 guests (30% chance it gets lost in the crowd: only 2)' },
-    stall:    { side: 'self', loc: 'country', name: "Farmers' market stall", price: 5, n: 1, food: 1, desc: '+1 guest and 1 free food' },
-    bus:      { side: 'self', loc: 'country', name: 'Tour bus stop', price: 8, n: 6, chance: 0.5, desc: '50%: a bus of 6 guests. Otherwise nobody' },
-    wom:      { side: 'self', loc: 'country', name: 'Village word of mouth', price: 5, n: 1, desc: '+1 guest today and +1 every day after' },
-    flyer:    { side: 'self', name: 'Flyers', price: 6, n: 2, desc: '+2 guests' },
-    blogger:  { side: 'self', name: 'Food blogger visit', price: 9, n: 4, chance: 0.5, star: 0.3, desc: '50%: +4 guests. Turn nobody away that day: 30% chance of +1 star' },
-    coupon:   { side: 'self', name: 'Opening coupon', price: 3, n: 3, off: 3, desc: '+3 guests, each pays $3 less' },
-    fake:     { side: 'rival', name: 'False advertisement', price: 3, desc: 'Does nothing. Makes them over-prepare' },
-    review:   { side: 'rival', name: 'Bad review', price: 6, n: 2, desc: 'They get 2 fewer guests' },
-    poach:    { side: 'rival', name: 'Poach a guest', price: 7, n: 1, desc: '1 of their guests comes to you instead' },
-    swamp:    { side: 'rival', name: 'Swamp them', price: 6, n: 3, desc: '+3 guests for them. Can they seat them all?' },
-    corner:   { side: 'rival', name: 'Corner the rush supplier', price: 5, extra: 3, desc: 'Their rush food costs $3 more each today' }
+    delivery: { side: 'self', loc: 'city', name: 'Delivery app spotlight', price: 8, n: 2, desc: '+2 delivery orders: they use food but no table' },
+    lunch:    { side: 'self', loc: 'city', name: 'Office lunch deal', price: 5, n: 3, off: 4, desc: '3 guests for sure, each pays $4 less' },
+    subway:   { side: 'self', loc: 'city', name: 'Subway poster', price: 13, n: 4, low: 2, lowChance: 0.3, desc: '+4 guests (30% chance it gets lost in the crowd: only 2)' },
+    stall:    { side: 'self', loc: 'country', name: "Farmers' market stall", price: 7, n: 1, food: 1, desc: '+1 guest and 1 free food' },
+    bus:      { side: 'self', loc: 'country', name: 'Tour bus stop', price: 10, n: 6, chance: 0.5, desc: '50%: a bus of 6 guests. Otherwise nobody' },
+    wom:      { side: 'self', loc: 'country', name: 'Village word of mouth', price: 7, n: 1, desc: '+1 guest today and +1 every day after' },
+    flyer:    { side: 'self', name: 'Flyers', price: 8, n: 2, desc: '+2 guests' },
+    blogger:  { side: 'self', name: 'Food blogger visit', price: 12, n: 4, chance: 0.5, star: 0.3, desc: '50%: +4 guests. Turn nobody away that day: 30% chance of +1 star' },
+    coupon:   { side: 'self', name: 'Opening coupon', price: 4, n: 3, off: 3, desc: '+3 guests, each pays $3 less' },
+    fake:     { side: 'rival', name: 'False advertisement', price: 4, desc: 'Does nothing. Makes them over-prepare' },
+    review:   { side: 'rival', name: 'Bad review', price: 8, n: 2, desc: 'They get 2 fewer guests' },
+    poach:    { side: 'rival', name: 'Poach a guest', price: 9, n: 1, desc: '1 of their guests comes to you instead' },
+    swamp:    { side: 'rival', name: 'Swamp them', price: 8, n: 3, desc: '+3 guests for them. Can they seat them all?' },
+    corner:   { side: 'rival', name: 'Corner the rush supplier', price: 7, extra: 3, desc: 'Their rush food costs $3 more each today' }
   },
   // Service (all TBD). Real time: guests walk in over the day; bunnies seat and serve their section, you do the rest.
   //   rush: price range [min, max] for one rush plate (+ corner card extra)
@@ -50,7 +50,7 @@ const CFG = {
   //   live (page timing, seconds / pixels per second): dayLen, first walk-in, longest gap between walk-ins,
   //   qPat door patience, sPat patience waiting for a plate, cPat courier patience, eat time, walking speeds,
   //   mSpeed rush marker sweeps per second, zone green width (share of the bar), decide seconds for event pop-ups
-  service: { rush: [7, 10], eventChance: 0.6, foodGood: 0.2, foodBad: 0.5, propose: 0.5, tip: 20, fightStaff: 2, fewer: 3,
+  service: { rush: [6, 9], eventChance: 0.6, foodGood: 0.2, foodBad: 0.5, propose: 0.5, tip: 20, fightStaff: 2, fewer: 3,
     live: { dayLen: 120, first: 6, gap: 8, qPat: 30, sPat: 30, cPat: 35, eat: 12, chefSpeed: 160, staffSpeed: 130,
       mSpeed: 0.7, zone: 0.11, decide: 15, tutSeed: 14 },
     // Build screen hints (TBD): about this many guests per bunny without your help; warn when less than foodWarn is left for food
