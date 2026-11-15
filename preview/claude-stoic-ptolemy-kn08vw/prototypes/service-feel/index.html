@@ -458,7 +458,6 @@ function buildStatic(hired, mode) {
   if (!CITY) {
     for (let i = 0; i < 4; i++) k += `<g transform="translate(${KR - 96 + i * 20} ${RY + 6})"><path d="M0 0 V10" stroke="${OUT}" stroke-width="1"/><circle cy="18" r="9" fill="#C27A4A" stroke="${OUT}" stroke-width="1.3"/><rect x="-1.5" y="6" width="3" height="5" fill="#7A4A2A"/></g>`;
     k += `<g transform="translate(${KX + 52} ${SY + 140})"><rect x="-26" y="-14" width="52" height="30" rx="5" fill="#A0673F" stroke="${OUT}" stroke-width="1.5"/><path d="M-26 0 h52" stroke="#7A4A2A" stroke-width="2"/><circle cx="-14" cy="-14" r="7" fill="#E63946" stroke="${OUT}" stroke-width="1"/><circle cx="0" cy="-16" r="6" fill="#84A98C" stroke="${OUT}" stroke-width="1"/><path d="M12 -12 l6 -10 l4 2 Z" fill="#F4A261" stroke="${OUT}" stroke-width="1"/></g>`;
-    k += `<g transform="translate(${KX + 40} ${RY + RH - 40})"><path d="M-16 20 C-22 -4 -16 -18 0 -18 C16 -18 22 -4 16 20 Z" fill="#E9DFD3" stroke="${OUT}" stroke-width="1.5"/><text y="6" text-anchor="middle" font-size="9" font-weight="900" fill="#7A5A40" font-family="Nunito,sans-serif">FLOUR</text></g>`;
   } else {
     k += `<rect x="${KX + 24}" y="${RY + 10}" width="${KR - KX - 48}" height="26" rx="4" fill="#FFFFFF" stroke="#C9D1D6" stroke-width="1.4"/>`;
     for (let i = 0; i < 6; i++) k += `<path d="M${KX + 40 + i * 40} ${RY + 14} v14" stroke="#9AA3AD" stroke-width="3" stroke-linecap="round"/>`;
@@ -472,7 +471,7 @@ function buildStatic(hired, mode) {
   let b = '';
   if (mode === 'build') {
     sections.forEach(sc => { if (sc.on) b += `<g transform="translate(${sc.home.x} ${sc.home.y})" pointer-events="none">${staffDraw(true, false)}</g>`; });
-    b += `<g pointer-events="none" transform="translate(${STOVE.x} ${STOVE.y}) scale(1.25)">${meDraw(false)}</g>`;
+    b += `<g pointer-events="none" transform="translate(${STOVE.x} ${STOVE.y}) scale(1.05)">${meDraw(false)}</g>`;
     const nx = KX + 18, ny = RY + 44, nw = KR - KX - 36;
     b += `<g pointer-events="none"><rect x="${nx}" y="${ny}" width="${nw}" height="104" rx="12" fill="#FFF7EC" stroke="${OUT}" stroke-width="1.8"/>`
       + ['You cook in the kitchen.', "When the bunnies can't keep up,", 'you seat and serve guests too.']
@@ -830,7 +829,7 @@ function render() {
   });
   // chef
   const ch = S.chef, ckey = ch.carry + '|' + LOC;
-  if (ckey !== ch.key) { ch.key = ckey; ch.node.innerHTML = `<g transform="scale(1.25)">${meDraw(ch.carry)}</g><g transform="translate(0 -108)"><rect x="-22" y="-12" width="44" height="22" rx="11" fill="${MC()}" stroke="${OUT}" stroke-width="1.4"/><text y="4" text-anchor="middle" font-size="12" font-weight="900" fill="#FFFFFF" font-family="Nunito,sans-serif">YOU</text></g>`; }
+  if (ckey !== ch.key) { ch.key = ckey; ch.node.innerHTML = `<g transform="scale(1.05)">${meDraw(ch.carry)}</g><g transform="translate(0 -94)"><rect x="-22" y="-12" width="44" height="22" rx="11" fill="${MC()}" stroke="${OUT}" stroke-width="1.4"/><text y="4" text-anchor="middle" font-size="12" font-weight="900" fill="#FFFFFF" font-family="Nunito,sans-serif">YOU</text></g>`; }
   ch.node.setAttribute('transform', `translate(${ch.x.toFixed(1)} ${ch.y.toFixed(1)})`);
   // couriers
   S.couriers.forEach(c => {
