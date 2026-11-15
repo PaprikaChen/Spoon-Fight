@@ -400,7 +400,7 @@ function F(defaults) {
 // =====================================================================
 // Rendering (UI v3). Every screen is built from plain words: what happened to you, and why.
 // =====================================================================
-const V = 'v16';
+const V = 'v17';
 const IMG = { art: `assets/key-art.jpg?v=${V}`, country: `assets/countryside.jpg?v=${V}`, city: `assets/city.jpg?v=${V}` };
 const STEPS = [['commit', 'Ads'], ['invest', 'Staff'], ['market', 'Market'], ['service', 'Service'], ['report', 'Recap']];
 // Day 1 has no Market (free food instead), and ads start on day CFG.adsFrom (then they are the first step), so early days have fewer steps
@@ -658,7 +658,7 @@ function pickHTML(s) {
     return `<section class="story" aria-label="Story ${i + 1} of ${INTRO.length}"><div class="stop"><button class="linkish quiet" data-act="introskip">Skip story</button></div>
       <div class="smid">${ART.story(i, esc(nameOf(o)).toUpperCase())}<p class="cap">${INTRO[i].t}</p></div>
       <div class="sfoot"><div class="sdots" aria-label="Page ${i + 1} of ${INTRO.length}">${INTRO.map((_, j) => `<i class="${j === i ? 'on' : ''}"></i>`).join('')}</div>
-        <button class="cta inline" data-act="intro">${lastCard ? 'Pick your restaurant →' : 'Next'}</button></div></section>`;
+        <span class="tbtns">${i ? '<button type="button" class="tback" data-act="introback">Back</button>' : ''}<button class="cta inline" data-act="intro">${lastCard ? 'Pick your restaurant →' : 'Next'}</button></span></div></section>`;
   }
   if (!k) {
     const mine = S.got[s] && S.got[s].loc;
@@ -1318,6 +1318,7 @@ document.addEventListener('click', e => {
     case 'cover-ok': app.cover = null; return render();
     case 'theme': { const t = isDark() ? 'light' : 'dark'; document.documentElement.dataset.theme = t; lsSet('theme', t); return render(); }
     case 'intro': app.intro++; return render();
+    case 'introback': app.intro = Math.max(0, app.intro - 1); return render();
     case 'picksel': { const f = F({}); f.loc = b.dataset.loc; return render(); }
     case 'showjoin': app.showJoin = true; render(); { const el = $('#code-in'); if (el) el.focus(); } return;
     case 'joininvite': return joinGame(app.invite && app.invite.code);
