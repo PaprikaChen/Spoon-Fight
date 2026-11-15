@@ -312,10 +312,6 @@ function sceneParts(loc, hired, mode, animal, color) {
   if (mode === 'build') {
     sections.forEach(sc => { if (sc.on) b += `<g transform="translate(${sc.home.x} ${sc.home.y})" pointer-events="none">${staffSVG(true, false)}</g>`; });
     b += `<g pointer-events="none" transform="translate(${STOVE.x} ${STOVE.y}) scale(1.05)">${chefSVG(animal, color, false)}</g>`;
-    const nx = KX + 18, ny = RY + 44, nw = KR - KX - 36;
-    b += `<g pointer-events="none"><rect x="${nx}" y="${ny}" width="${nw}" height="104" rx="12" fill="#FFF7EC" stroke="${OUT}" stroke-width="1.8"/>`
-      + ['You cook in the kitchen.', "When the bunnies can't keep up,", 'you seat and serve guests too.']
-        .map((t, i) => `<text x="${nx + nw / 2}" y="${ny + 30 + i * 26}" text-anchor="middle" font-size="${i ? 14 : 16}" font-weight="900" fill="${OUT}" font-family="Nunito,sans-serif">${t}</text>`).join('') + '</g>';
     sections.forEach(sc => { b += `<rect class="sec-hit" data-act="hire" data-i="${sc.i}" role="button" tabindex="0" aria-label="${sc.on ? 'Let this bunny go' : 'Hire a bunny here'}" x="${sc.x}" y="${sc.y}" width="${sc.w}" height="${sc.h}" rx="16" fill="transparent"/>`; });
   }
   const layers = `<g class="L-plates"></g><g class="L-bus"></g>` + chairs + `<g class="L-seated"></g>` + tops + `<g class="L-tplates"></g><g class="L-build">${b}</g><g class="L-inj"></g><g class="L-walk"></g><g class="L-over"></g><g class="L-ui" pointer-events="none"></g>`;
@@ -907,5 +903,7 @@ function floorPlan(loc, hired, animal, color) {
 const sectionCount = loc => (loc === 'country' ? 10 : 8);
 // Where the Build panel sits on the plan: the lower half of the kitchen (CSS for an absolutely placed box)
 const buildBox = `left:${(KX / W * 100 + 0.8).toFixed(2)}%;top:${((SY + 138) / H * 100).toFixed(2)}%;width:${((KR - KX) / W * 100 - 1.6).toFixed(2)}%;height:${((RY + RH - SY - 138) / H * 100 - 1.5).toFixed(2)}%`;
-window.RRService = { create, floorPlan, sectionCount, buildBox };
+// The kitchen above that panel: hovering it explains that you, the owner, work there
+const kitchenBox = `left:${(KX / W * 100).toFixed(2)}%;top:${(RY / H * 100).toFixed(2)}%;width:${((KR - KX) / W * 100).toFixed(2)}%;height:${((SY + 130 - RY) / H * 100).toFixed(2)}%`;
+window.RRService = { create, floorPlan, sectionCount, buildBox, kitchenBox };
 })();

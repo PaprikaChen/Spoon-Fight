@@ -27,6 +27,9 @@ static = static[:i] + """  const layers = `<g class="L-plates"></g><g class="L-b
   return { html: g + k + layers, tables, sections };
 }
 """
+# The page shows the kitchen note as a hover pop-up instead (app.js hireStage), so drop the fixed note from the plan
+i = static.index("    const nx = KX + 18, ny = RY + 44"); j = static.index("    sections.forEach(sc => { b +=", i)
+static = static[:i] + static[j:]
 assert 'svg.' not in static and 'LOC' not in static, [l for l in static.split('\n') if 'LOC' in l or 'svg.' in l]
 # ids inside one page must be unique per svg only for our own use: patterns are identical, so duplicates are harmless
 

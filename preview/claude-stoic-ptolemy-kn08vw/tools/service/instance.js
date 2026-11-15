@@ -584,5 +584,7 @@ function floorPlan(loc, hired, animal, color) {
 const sectionCount = loc => (loc === 'country' ? 10 : 8);
 // Where the Build panel sits on the plan: the lower half of the kitchen (CSS for an absolutely placed box)
 const buildBox = `left:${(KX / W * 100 + 0.8).toFixed(2)}%;top:${((SY + 138) / H * 100).toFixed(2)}%;width:${((KR - KX) / W * 100 - 1.6).toFixed(2)}%;height:${((RY + RH - SY - 138) / H * 100 - 1.5).toFixed(2)}%`;
-window.RRService = { create, floorPlan, sectionCount, buildBox };
+// The kitchen above that panel: hovering it explains that you, the owner, work there
+const kitchenBox = `left:${(KX / W * 100).toFixed(2)}%;top:${(RY / H * 100).toFixed(2)}%;width:${((KR - KX) / W * 100).toFixed(2)}%;height:${((SY + 130 - RY) / H * 100).toFixed(2)}%`;
+window.RRService = { create, floorPlan, sectionCount, buildBox, kitchenBox };
 })();

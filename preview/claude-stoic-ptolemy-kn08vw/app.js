@@ -400,7 +400,7 @@ function F(defaults) {
 // =====================================================================
 // Rendering (UI v3). Every screen is built from plain words: what happened to you, and why.
 // =====================================================================
-const V = 'v8';
+const V = 'v9';
 const IMG = { art: `assets/key-art.jpg?v=${V}`, country: `assets/countryside.jpg?v=${V}`, city: `assets/city.jpg?v=${V}` };
 const STEPS = [['invest', 'Staff'], ['market', 'Market'], ['commit', 'Ads'], ['service', 'Service'], ['report', 'Recap']];
 // Day 1 has no Market (free food instead), and ads start on day CFG.adsFrom, so early days have fewer steps
@@ -720,7 +720,10 @@ function offerHTML(s, f) {
 // Day 1 starts with the team's three pop-ups (f.tip counts them).
 function hireStage(s, staff, card, over = '') {
   const p = app.S.players[s], look = seatLook(s);
-  return `<div class="hstage">${RRService.floorPlan(p.loc, staff, look.animal, look.color)}<div class="hcard" style="${RRService.buildBox}">${card}</div>${over}</div>`;
+  // The kitchen can't be picked: hovering (or tapping) it pops up a note, from the team's sketch
+  const kitchen = `<div class="khover" style="${RRService.kitchenBox}" tabindex="0" role="note" aria-label="Kitchen" onmouseleave="this.classList.remove('done')">
+    <div class="kbubble"><p>You, the owner, will work in the kitchen. You cannot select here.</p><button type="button" class="cta inline" onclick="this.closest('.khover').classList.add('done');this.blur()">OK</button></div></div>`;
+  return `<div class="hstage">${RRService.floorPlan(p.loc, staff, look.animal, look.color)}${kitchen}<div class="hcard" style="${RRService.buildBox}">${card}</div>${over}</div>`;
 }
 const hrow = (l, r, cls = '') => `<div class="hrw ${cls}"><span>${l}</span><b>${r}</b></div>`;
 // A staff section as drawn on the team's sticky note: a green rug with two tables

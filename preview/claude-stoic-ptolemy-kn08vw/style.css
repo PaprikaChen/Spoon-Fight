@@ -839,3 +839,11 @@ body{transition:background-color .35s ease}
 .hover2 .tiprow{display:flex;align-items:center;gap:16px}
 .hover2 .tippic{width:130px;flex:none}
 .hover2 .big{font-size:30px;font-family:var(--display)}
+/* Kitchen hover note on the Staff step */
+.khover{position:absolute;z-index:3;cursor:help;border-radius:12px}
+.khover:hover,.khover:focus-within{box-shadow:inset 0 0 0 3px #FFE08A}
+.kbubble{display:none;position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);width:min(240px,92%);background:#FFF7EC;color:#3A2A1E;border:2px solid #E9C46A;border-radius:16px;padding:12px 14px;box-shadow:0 4px 0 rgba(0,0,0,.3);flex-direction:column;gap:8px;align-items:flex-end;cursor:default}
+.kbubble p{margin:0;font-weight:700;font-size:14px;line-height:1.35;align-self:stretch}
+.kbubble .cta{padding:6px 14px;font-size:14px}
+.khover:hover .kbubble,.khover:focus-within .kbubble{display:flex}
+.khover.done .kbubble{display:none}
