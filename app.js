@@ -350,7 +350,7 @@ const mktTimeLeft = () => (app.mkt && app.mkt.start ? CFG.market.time * 1000 - (
 const ownedBy = s => Object.keys(app.mkt ? app.mkt.owner : {}).filter(i => app.mkt.owner[i] === s).map(Number).sort((a, b) => a - b);
 function mktCashLeft(s) {
   const S = app.S, items = S.market.items;
-  return S.players[s].cash - ownedBy(s).reduce((a, i) => a + CFG.market[items[i]].price, 0);
+  return S.players[s].cash - adReserve(s) - ownedBy(s).reduce((a, i) => a + CFG.market[items[i]].price, 0);
 }
 async function claimItem(s, i) {
   const S = app.S, M = CFG.market, type = S.market.items[i], k = S.waiting[s];
@@ -400,12 +400,23 @@ function F(defaults) {
 // =====================================================================
 // Rendering (UI v3). Every screen is built from plain words: what happened to you, and why.
 // =====================================================================
-const V = 'v15';
+const V = 'v16';
 const IMG = { art: `assets/key-art.jpg?v=${V}`, country: `assets/countryside.jpg?v=${V}`, city: `assets/city.jpg?v=${V}` };
-const STEPS = [['invest', 'Staff'], ['market', 'Market'], ['commit', 'Ads'], ['service', 'Service'], ['report', 'Recap']];
-// Day 1 has no Market (free food instead), and ads start on day CFG.adsFrom, so early days have fewer steps
+const STEPS = [['commit', 'Ads'], ['invest', 'Staff'], ['market', 'Market'], ['service', 'Service'], ['report', 'Recap']];
+// Day 1 has no Market (free food instead), and ads start on day CFG.adsFrom (then they are the first step), so early days have fewer steps
 const stepsFor = r => STEPS.filter(x => !(x[0] === 'market' && r === 1 && CFG.freeFood) && !(x[0] === 'commit' && r < CFG.adsFrom));
-const stepOf = p => ({ morning: 'invest', reveal: 'service', voucher: 'service' })[p] || p;
+const stepOf = p => ({ morning: app.S && app.S.round >= CFG.adsFrom ? 'commit' : 'invest', reveal: 'service', voucher: 'service' })[p] || p;
+// Cards are paid when they flip (after the Market), so until then the page keeps their price aside
+function adReserve(s) {
+  const S = app.S;
+  if (!S || S.round < CFG.adsFrom || !['invest', 'market'].includes(S.phase)) return 0;
+  const c = myCards(s); return c ? adCost(c) : 0;
+}
+// What a player knows before the flip: how many cards the rival placed on them, not which
+function rivalCardsNote(s) {
+  const S = app.S, o = other(s), n = S.round >= CFG.adsFrom && S.commits && S.commits[o] ? S.commits[o].nRival : 0;
+  return n ? `<span class="pill2 rivalcards">🂠 ${esc(nameOf(o))} played ${plural(n, 'card')} on you · they flip before service</span>` : '';
+}
 const PRIVATE_LINES = ['Shady deal', 'Reservation paid', 'Inspector fine'];
 const PRIVATE_WHY = ['reservation had no seat −1', 'inspector −1'];
 // The opening story (wording from the agreed mockups): one line per card
@@ -559,7 +570,7 @@ function howtoHTML() {
       ${sec('day', 'A day, step by step', 'What you do in each of the 5 steps', `<ol class="steps">
         <li><b>Staff</b><br>Hire bunnies. Each one seats and serves the ${C.staff.perSection} tables on its rug. Wages are paid every morning before you open, and bunnies stay until you let them go ($${C.staff.fire} to say goodbye).</li>
         <li><b>Market</b><br>You both shop at once for ${C.market.time} seconds. Whoever clicks first gets the food. <b>Express</b> ($${C.market.exp.price}) arrives today. <b>Regular</b> ($${C.market.reg.price}) is cheaper, but might not arrive until tomorrow. On the last day there's only Express.</li>
-        <li><b>Ads</b> (from day ${C.adsFrom})<br>Buy cards that bring you guests, or that cause trouble for your rival. Cards stay secret until service starts, and you only pay when they're revealed.</li>
+        <li><b>Ads</b> (from day ${C.adsFrom}, first thing in the morning)<br>Buy cards that bring you guests, or that cause trouble for your rival. You only see how many cards your rival played on you. All cards flip just before service, and you pay for yours then.</li>
         <li><b>Service</b><br>Guests walk in for ${Math.round(C.service.live.dayLen / 60)} minutes. Your bunnies look after their own tables. You are the chef: click a guest at the door to seat them, click a seated guest to bring a plate. Out of plates? Click the stove to rush one ($${C.service.rush[0]}–${C.service.rush[1]}). Guests wait about ${C.service.live.qPat} seconds before they leave unhappy.</li>
         <li><b>Recap</b><br>See what you earned, what you spent and how your stars changed. Leftover food goes bad overnight.</li></ol>`)}
       ${sec('stars', 'Stars', 'How to earn them and how to lose them', `<p>You start with ${C.startStars} stars. They change at the end of each day.</p>
@@ -760,7 +771,7 @@ function hireTip(s, i) {
 function buildHTML(s) {
   const S = app.S, p = S.players[s], o = other(s), k = S.waiting[s], e = S.events[s], M = CFG.market;
   const day1 = S.round === 1 && CFG.freeFood, nSec = sectionsOf(p), w = wageOf(p);
-  const head = (h, sub) => `<div class="hhead"><div class="fh"><h1 class="funt">${h}</h1><span class="fsub">${sub}</span></div>${morningLine(s)}</div>`;
+  const head = (h, sub) => `<div class="hhead"><div class="fh"><h1 class="funt">${h}</h1><span class="fsub">${sub}</span></div><div class="hpills">${rivalCardsNote(s)}${morningLine(s)}</div></div>`;
   if (!k) {
     const g = S.got[s] || {}, bits = [];
     if (e.type === 'shady' && g.choice) bits.push(g.choice === 'accept' ? 'take the shady deal' : 'say no to the shady deal');
@@ -772,17 +783,18 @@ function buildHTML(s) {
   if (day1 && !f.gift) return giftHTML(s);
   if (needChoice && !f.offer) return `<div class="solo2">${offerHTML(s, f)}</div>`;
   const loanOn = CFG.loan.enabled && !p.loan; // loans are off in CFG for now; this brings the option back if the team turns them on
-  const cash = p.cash + (f.choice === 'accept' ? CFG.shady.cash : 0) + (loanOn && f.loan ? CFG.loan.amount : 0);
+  const reserved = adReserve(s), mine = myCards(s);
+  const cash = p.cash - reserved + (f.choice === 'accept' ? CFG.shady.cash : 0) + (loanOn && f.loan ? CFG.loan.amount : 0);
   const n = f.staff.length, fired = Math.max(0, p.staff.length - p.staff.filter(i => f.staff.includes(i)).length - f.staff.filter(i => !p.staff.includes(i)).length);
   const wages = n * w, sev = fired * CFG.staff.fire, after = round2(cash - wages - sev);
-  const E = expectedDemand(p), guess = Math.max(0, Math.round(E.total)), sug = Math.min(nSec, Math.ceil(guess / CFG.service.perBunny));
+  const E = expectedDemand(p, S.round >= CFG.adsFrom && mine ? mine.self : []), guess = Math.max(0, Math.round(E.total)), sug = Math.min(nSec, Math.ceil(guess / CFG.service.perBunny));
   const warn = !day1 && after < CFG.service.foodWarn ? `<span class="hwarn">Only ${usd(after)} left for food at the Market.</span>` : '';
   const loan = !loanOn ? '' : `<button type="button" class="linkish" data-act="loan" data-v="${f.loan ? 0 : 1}">${f.loan ? `Loan taken: +$${CFG.loan.amount} (pay back $${CFG.loan.repay}). Undo` : `Take a $${CFG.loan.amount} loan (pay back $${CFG.loan.repay} at the end)`}</button>`;
   const sub = day1 ? `Click a section to hire a server. Each server looks after the ${CFG.staff.perSection} tables in their section.`
     : `Your staff from yesterday are still here. Click a section to hire, or click a bunny to let them go ($${CFG.staff.fire} to say goodbye).`;
   const change = needChoice ? `<span class="hnote">${f.choice === 'accept' ? `You took the $${CFG.shady.cash}.` : 'You said no to the deal.'}</span>` : '';
   const card = `<b class="htitle">Hire staff</b>
-    ${hrow(`$${w} per bunny a day`, n ? usd(-wages) : '$0')}${fired ? hrow(`Goodbye pay ×${fired}`, usd(-sev)) : ''}
+    ${reserved ? hrow('Ad cards (paid when they flip)', usd(-reserved)) : ''}${hrow(`$${w} per bunny a day`, n ? usd(-wages) : '$0')}${fired ? hrow(`Goodbye pay ×${fired}`, usd(-sev)) : ''}
     ${hrow('Expect about', plural(guess, 'guest'))}${hrow('Suggested without your help', plural(sug, 'bunny', 'bunnies'))}${hrow('Left after wages', usd(after), 'you')}${warn}${change}${loan}
     <button class="cta" data-act="invest">${day1 ? 'Open for service →' : 'Go shopping →'}</button>`;
   return `<section class="hire2">${head(day1 ? 'Time to hire staff' : 'Hire staff', sub)}${hireStage(s, f.staff, card, day1 && f.tip < 3 ? hireTip(s, f.tip) : '')}</section>`;
@@ -793,7 +805,7 @@ const seatLook = s => SEAT_LOOK[s];
 function toggleHire(s, i) {
   const S = app.S, p = S.players[s], f = F({ staff: p.staff.slice() }), e = S.events[s];
   if (f.staff.includes(i)) { f.staff = f.staff.filter(x => x !== i); return render(); }
-  const cash = p.cash + (f.choice === 'accept' && e.type === 'shady' ? CFG.shady.cash : 0) + (CFG.loan.enabled && !p.loan && f.loan ? CFG.loan.amount : 0);
+  const cash = p.cash - adReserve(s) + (f.choice === 'accept' && e.type === 'shady' ? CFG.shady.cash : 0) + (CFG.loan.enabled && !p.loan && f.loan ? CFG.loan.amount : 0);
   const next = [...f.staff, i], cost = staffCost(p, next.length);
   if (cost > Math.max(0, cash)) return toast(`Not enough cash for another bunny ($${wageOf(p)} a day)`);
   f.staff = next.sort((a, b) => a - b);
@@ -873,7 +885,7 @@ function marketHTML(s) {
         <div><span class="tbox reg">${ART.icon('box', 18)}</span><span><b>Regular · $${M.reg.price}</b><span>${S.round === CFG.rounds - 1 ? "Half the time it arrives tomorrow, the last day" : 'Half the time it arrives tomorrow morning instead'}</span></span></div></div>`;
   return `<div class="game">
     <section class="panel lift" aria-label="The market shelf">
-      ${titleHTML('Market', `You and ${esc(nameOf(o))} shop at the same time. Whoever clicks an item first gets it.`,
+      ${titleHTML('Market', `You and ${esc(nameOf(o))} shop at the same time. Whoever clicks an item first gets it.${adReserve(s) ? ` $${adReserve(s)} is kept aside for your ad cards.` : ''}`,
         `<div class="timer" role="timer">${ring(t0, t1)}<span class="t"><b data-count="${t1}">${Math.max(0, Math.ceil(left / 1000))}s</b><span>until the market closes</span></span></div>`)}
       ${legend}${strip}
       <div class="shelf">${items.map((t, i) => slot(t, i)).join('')}</div>
@@ -942,7 +954,7 @@ function adsHTML(s) {
     const mine = myCards(s), ids = mine ? [...mine.self, ...mine.rival] : [];
     return shell(fhead('Your cards are face down', ids.length ? `${esc(nameOf(o))} only sees ${plural(ids.length, 'card back')}. They flip when service starts.` : 'You chose not to play any cards today.')
       + (ids.length ? `<div class="hand2"><div class="hrow">${ids.map(id => adCard(id, o, { button: false })).join('')}</div></div>` : ''),
-      waitBox(o, 'Service starts as soon as they lock in theirs.'));
+      waitBox(o, 'Hiring staff comes next, then the Market. All cards flip just before service.'));
   }
   const f = F({ sel: [] }), sh = S.shops[s], A = CFG.ads;
   const cost = f.sel.reduce((a, id) => a + A[id].price, 0), left = p.cash - cost;
@@ -961,12 +973,11 @@ function adsHTML(s) {
   const bar = (l, val, solid, extra, cls = '') => `<div class="bar2 ${cls}"><div class="bl"><span>${l}</span><b>${val}</b></div><div class="bt"><i style="width:${solid / scale * 100}%"></i><i class="ht" style="width:${extra / scale * 100}%"></i></div></div>`;
   const b0 = Math.max(0, E0.max);
   const card = id => adCard(id, o, { state: f.sel.includes(id) ? 'on' : A[id].price > left ? 'poor' : '' });
-  return shell(fhead('Play your cards', `Tap to play face-down. ${esc(nameOf(o))} only sees the backs.`, '<span class="pill2">New hand every day</span>')
+  return shell(fhead('Play your cards', `Tap to play face-down. ${esc(nameOf(o))} only sees how many. Cards are paid when they flip, just before service.`, morningLine(s))
       + `<div class="hand2" aria-label="Today's ad cards"><div class="hrow">${sh.self.map(card).join('')}</div><div class="hrow">${sh.rival.map(card).join('')}</div></div>`,
     box(`${lab('Tonight, if you play these')}
         ${bar('Guests', now !== base ? `${base} → ${now}${names ? ` with ${esc(names)}` : ''}` : now, Math.min(b0, gMax), Math.max(0, gMax - b0))}
-        ${bar('Seats', `${tables}${deliv ? ` + ${deliv} delivery` : ''}`, tables + deliv, 0, !canAll && short === 'seats' ? 'low' : '')}
-        ${bar('Plates', food, food, 0, !canAll && short === 'plates' ? 'low' : '')}${verdict}`)
+        <span class="fnote">You hire staff and buy food after this, so plan for these guests. ${esc(nameOf(o))}'s cards on you are a surprise until just before service.</span>`)
     + box(`<div class="bhead">${lab('Played face-down')}<span>${esc(nameOf(o))} sees: ${plural(f.sel.length, 'card')}</span></div>
         <div class="backs2">${f.sel.length ? f.sel.map((_, i) => cardBack(i)).join('') : '<span class="fnote">No cards yet.</span>'}<b>${usd(-cost)}</b></div>`),
     `<button class="cta" data-act="commit">${f.sel.length ? `Lock in ${plural(f.sel.length, 'card')}` : 'Skip ads today'}</button>`);

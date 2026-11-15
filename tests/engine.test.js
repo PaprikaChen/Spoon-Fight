@@ -85,10 +85,14 @@ console.log(wins, reasons, { avgServed: (stats.served / stats.days).toFixed(2), 
     p2: [{ k: '0:pick', loc: 'country' }, { k: '1:invest', staff: [] }, { k: '1:service', res: {} }, { k: '1:voucher', n: 0 }, { k: '1:next' }, { k: '2:morning' }, { k: '2:invest', staff: [] }] };
   const S2 = E.simulate('fire', H), led = S2.players.p1.ledger;
   if (!led.some(l => l.label === 'Severance ×2' && l.amt === -2 * E.CFG.staff.fire) || !led.some(l => l.label === 'Wages ×1')) { console.log('severance wrong', led); process.exit(1); }
-  for (const s of ['p1', 'p2']) H[s].push({ k: '2:market', buys: [] }, { k: '2:service', res: {} }, { k: '2:voucher', n: 0 }, { k: '2:next' }, { k: '3:morning' }, { k: '3:invest', staff: S2.players[s].staff }, { k: '3:market', buys: [] });
+  for (const s of ['p1', 'p2']) H[s].push({ k: '2:market', buys: [] }, { k: '2:service', res: {} }, { k: '2:voucher', n: 0 }, { k: '2:next' }, { k: '3:morning' });
   const S3 = E.simulate('fire', H);
   if (S2.phase !== 'market' || S3.round !== 3 || S3.phase !== 'commit') { console.log('ads day wrong', S2.phase, S3.round, S3.phase); process.exit(1); }
-  console.log('severance + ads from day 3 OK');
+  // Day 3: Ads first, then staff and market, then the flip
+  for (const s of ['p1', 'p2']) H[s].push({ k: '3:commit', h: E.adHash({ self: [], rival: [] }, 'x'), nSelf: 0, nRival: 0 }, { k: '3:invest', staff: [] }, { k: '3:market', buys: [] });
+  const S4 = E.simulate('fire', H);
+  if (S4.phase !== 'reveal') { console.log('ads first: no flip after the market', S4.phase); process.exit(1); }
+  console.log('severance + ads first from day 3 OK');
 }
 // Determinism and money checks: the same logs must always give the same result, and cash has at most 2 decimals.
 {

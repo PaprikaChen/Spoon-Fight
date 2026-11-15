@@ -11,7 +11,8 @@ const CFG = {
   // Bunnies stay from day to day; letting one go costs `fire` (severance). Wages are TBD.
   staff: { wage: { country: 6, city: 10 }, fire: 10, perSection: 2 },
   baseDemand: 14,
-  // Ad cards start on this day (days before it have no Ads step)
+  // Ad cards start on this day (days before it have no Ads step). From then on Ads is the first step of the day,
+  // and the cards stay face down (only the counts are public) until just before service.
   adsFrom: 3,
   // Day 1 has no Market: the Golden Spoon gives each restaurant this much free food instead (most of it gets wasted: that's the lesson)
   freeFood: 12,
@@ -364,9 +365,9 @@ function expected(S) {
   return need;
 }
 
-// After the Market: the Ads step, or straight to service on days before CFG.adsFrom
-function toAds(S) {
-  if (S.round >= CFG.adsFrom) { for (const s of SEATS) S.shops[s] = shopFor(S, s); S.phase = 'commit'; return; }
+// After the Market: flip the cards placed this morning, or straight to service on days before CFG.adsFrom
+function afterMarket(S) {
+  if (S.round >= CFG.adsFrom) { S.phase = 'reveal'; return; }
   S.commits = {}; S.reveals = {};
   for (const s of SEATS) S.reveals[s] = { self: [], rival: [], ok: true };
   toService(S);
@@ -395,7 +396,10 @@ function apply(S, got) {
       }
       startRound(S); break;
     }
-    case 'morning': S.phase = 'invest'; break;
+    case 'morning':
+      if (r >= CFG.adsFrom) { for (const s of SEATS) S.shops[s] = shopFor(S, s); S.phase = 'commit'; }
+      else S.phase = 'invest';
+      break;
     case 'invest': {
       for (const s of SEATS) {
         const p = S.players[s], a = got[s], e = S.events[s];
@@ -416,7 +420,7 @@ function apply(S, got) {
         if (p.staff.length) money(p, `Wages ×${p.staff.length}`, -p.staff.length * wageOf(p));
       }
       // Day 1 skips the Market (the free food is already in the kitchen)
-      if (r === 1 && CFG.freeFood) toAds(S);
+      if (r === 1 && CFG.freeFood) afterMarket(S);
       else startMarket(S);
       break;
     }
@@ -439,7 +443,7 @@ function apply(S, got) {
         if (b.today + b.tomorrow) p.ledger.push({ label: `Regular food ×${b.today + b.tomorrow}${b.tomorrow ? ` (${b.tomorrow} tomorrow)` : ''}`, amt: -(b.today + b.tomorrow) * M.reg.price });
         m.bought[s] = b;
       }
-      toAds(S); break;
+      afterMarket(S); break;
     }
     case 'commit': {
       S.commits = {}; S.reveals = {};
@@ -447,7 +451,7 @@ function apply(S, got) {
         const a = got[s], sh = S.shops[s];
         S.commits[s] = { h: String(a.h), nSelf: intIn(a.nSelf, 0, sh.self.length), nRival: intIn(a.nRival, 0, sh.rival.length) };
       }
-      S.phase = 'reveal'; break;
+      S.phase = 'invest'; break;   // staff and market next; the cards flip after the market
     }
     case 'reveal': {
       for (const s of SEATS) {

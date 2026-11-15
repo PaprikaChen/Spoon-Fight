@@ -113,6 +113,7 @@ SCREENS = [
   ('10b-market-waiting-rival', "{ const g = __shot.playTo('shot0', 'market', 2); __shot.load(g, 'p1', { market: { owner: {}, elapsed: null, ready: { p1: Date.now() - 8000 } } }) }"),
   ('10-market', "{ const g = __shot.playTo('shot0', 'market', 2); __shot.load(g, 'p1', { market: { owner: { 0: 'p1', 1: 'p2', 2: 'p2', 4: 'p1', 5: 'p2' }, elapsed: 24, cooling: 4 } }) }"),
   ('11-market-last-day', "{ const g = __shot.find('market', 5, S => true, { loc: { p1: 'country', p2: 'country' }, rush: true }); __shot.load(g, 'p1', { market: { owner: { 0: 'p2' }, elapsed: 5 } }) }"),
+  ('12b-staff-day3-after-ads', "{ const g = __shot.playTo('shot0', 'invest', 3); __shot.load(g, 'p1', { form: { staff: [0, 2, 5], choice: null, offer: true } }) }"),
   ('12-ads', "{ const g = __shot.playTo('shot0', 'commit', 3); const sh = g.S.shops.p1; __shot.load(g, 'p1', { form: { sel: [sh.self[0], sh.rival[0]] } }) }"),
   ('13a-cards-flip', "{ const g = __shot.playTo('shot0', 'service', 3); __shot.load(g, 'p1', { svc: { started: false, flip: 1 } }) }"),
   ('13-cards-done', "{ const g = __shot.playTo('shot0', 'service', 3); __shot.load(g, 'p1', { svc: { started: false, flip: 99 } }) }"),
