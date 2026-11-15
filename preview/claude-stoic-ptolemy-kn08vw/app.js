@@ -400,7 +400,7 @@ function F(defaults) {
 // =====================================================================
 // Rendering (UI v3). Every screen is built from plain words: what happened to you, and why.
 // =====================================================================
-const V = 'v17';
+const V = 'v18';
 const IMG = { art: `assets/key-art.jpg?v=${V}`, country: `assets/countryside.jpg?v=${V}`, city: `assets/city.jpg?v=${V}` };
 const STEPS = [['commit', 'Ads'], ['invest', 'Staff'], ['market', 'Market'], ['service', 'Service'], ['report', 'Recap']];
 // Day 1 has no Market (free food instead), and ads start on day CFG.adsFrom (then they are the first step), so early days have fewer steps
@@ -426,6 +426,13 @@ const INTRO = [
   { pic: 'apart', t: 'You went separate ways. Years passed. Not one word.' },
   { pic: 'prize', t: 'Then the Golden Spoon named its prize: the Two Spoons.' },
   { pic: 'final', t: 'You made the final. So did they.' }];
+// After the story: four pages on the goal (from the team's sketch). app.intro counts story pages, then these.
+const GOAL_PAGES = [
+  { chip: 'YOUR GOAL', cap: 'Win the Golden Spoon competition.', sub: () => 'Then you get the keys and <b>re-open the Two Spoons restaurant.</b>' },
+  { chip: 'HOW TO WIN', cap: `Earn the most money in ${CFG.rounds} days.`, sub: () => `Whoever has more at the end of day ${CFG.rounds} wins.` },
+  { chip: 'STARS', cap: 'Star ratings can increase your money.', sub: () => `Each star adds a <b>$${CFG.starValue} bonus</b> at the end of ${CFG.rounds} days.` },
+  { chip: 'REMEMBER!', cap: 'Your rival is also trying to win!', sub: () => 'Watch what they do, and look out for tricks. You can play tricks too… <b>May the best restaurateur win!</b>' }];
+const INTRO_ALL = () => INTRO.length + GOAL_PAGES.length;
 const plural = (n, one, many) => `${n} ${n === 1 ? one : (many || one + 's')}`;
 const gold = (t, cls = '') => `<span class="gold ${cls}" aria-hidden="true">${t}</span>`;
 const score = s => { const p = app.S.players[s]; return round2(p.cash + p.stars * CFG.starValue); };
@@ -478,7 +485,7 @@ function renderBar() {
     if (S.phase === 'invest' && S.round === 1 && CFG.freeFood && S.waiting[viewer()] && !(app.form[`${viewer()}|${S.waiting[viewer()]}`] || {}).gift) logo = false;
     else if (S.phase === 'pick') {
       logo = false;
-      if (app.intro >= INTRO.length) mid = `<span class="daypill"><span>Day <b>1</b> of ${CFG.rounds}</span><i></i><b class="num">$${CFG.startCash}</b><i></i><span class="gstars" role="img" aria-label="${CFG.startStars} of 5 stars">${'★'.repeat(CFG.startStars)}<span>${'★'.repeat(5 - CFG.startStars)}</span></span></span>`;
+      if (app.intro >= INTRO_ALL()) mid = `<span class="daypill"><span>Day <b>1</b> of ${CFG.rounds}</span><i></i><b class="num">$${CFG.startCash}</b><i></i><span class="gstars" role="img" aria-label="${CFG.startStars} of 5 stars">${'★'.repeat(CFG.startStars)}<span>${'★'.repeat(5 - CFG.startStars)}</span></span></span>`;
     }
     else if (S.phase === 'over') mid = `<span class="day"><b>Game over</b> · ${S.result.reason === 'bankrupt' ? 'a restaurant closed' : '5 days played'}</span>`;
     else {
@@ -653,8 +660,15 @@ function phaseHTML(s) {
 // ---------- intro + pick ----------
 function pickHTML(s) {
   const S = app.S, k = S.waiting[s], o = other(s);
+  if (app.intro >= INTRO.length && app.intro < INTRO_ALL()) {
+    const g = app.intro - INTRO.length, G = GOAL_PAGES[g], lastCard = g === GOAL_PAGES.length - 1;
+    return `<section class="story goal" aria-label="Goal ${g + 1} of ${GOAL_PAGES.length}"><div class="stop"><button class="linkish quiet" data-act="introskip">Skip</button></div>
+      <div class="smid"><span class="goalchip">${ART.spoonMark(false)}${G.chip}${ART.spoonMark(true)}</span>${ART.goal(g, esc(nameOf(o)).toUpperCase(), CFG.rounds, CFG.starValue)}<div class="goaltext"><p class="cap">${G.cap}</p><p class="gsub">${G.sub()}</p></div></div>
+      <div class="sfoot"><div class="sdots" aria-label="Page ${g + 1} of ${GOAL_PAGES.length}">${GOAL_PAGES.map((_, j) => `<i class="${j === g ? 'on' : ''}"></i>`).join('')}</div>
+        <span class="tbtns"><button type="button" class="tback" data-act="introback">Back</button><button class="cta inline" data-act="intro">${lastCard ? 'Pick your restaurant →' : 'Next'}</button></span></div></section>`;
+  }
   if (app.intro < INTRO.length) {
-    const i = app.intro, lastCard = i === INTRO.length - 1;
+    const i = app.intro, lastCard = false;
     return `<section class="story" aria-label="Story ${i + 1} of ${INTRO.length}"><div class="stop"><button class="linkish quiet" data-act="introskip">Skip story</button></div>
       <div class="smid">${ART.story(i, esc(nameOf(o)).toUpperCase())}<p class="cap">${INTRO[i].t}</p></div>
       <div class="sfoot"><div class="sdots" aria-label="Page ${i + 1} of ${INTRO.length}">${INTRO.map((_, j) => `<i class="${j === i ? 'on' : ''}"></i>`).join('')}</div>
@@ -1328,7 +1342,7 @@ document.addEventListener('click', e => {
       try { navigator.clipboard.writeText(link).then(() => toast('Link copied'), () => toast(link)); } catch (err) { toast(link); }
       return;
     }
-    case 'introskip': app.intro = INTRO.length; return render();
+    case 'introskip': app.intro = app.intro < INTRO.length ? INTRO.length : INTRO_ALL(); return render();  // Skip story → the goal pages; Skip on those → pick
     case 'howto': {
       const ph = S && app.mode ? S.phase : null;
       app.howto = { open: ph === 'pick' ? 'pick' : ['invest', 'market', 'commit', 'service', 'voucher', 'report'].includes(ph) ? 'day' : null };

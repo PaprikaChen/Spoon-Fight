@@ -60,7 +60,7 @@ const CFG = {
   voucher: 3,
   // Loans (off for now): set enabled to true to bring back the Build-phase loan and the automatic loan when rent can't be paid
   loan: { enabled: false, amount: 30, repay: 40 },
-  starValue: 10, shady: { cash: 15, fine: 20 }
+  starValue: 20, shady: { cash: 15, fine: 20 }
 };
 const round2 = x => Math.round(x * 100) / 100;
 const SEATS = ['p1', 'p2'];

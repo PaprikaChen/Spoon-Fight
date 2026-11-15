@@ -879,3 +879,12 @@ body{transition:background-color .35s ease}
 .kbubble p{font-weight:700;font-size:14px}
 .hpills{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
 .rivalcards{background:#FBE3EE;color:#9D174D}
+/* Goal pages after the story */
+.story.goal .smid{gap:18px}
+.goalchip{display:inline-flex;align-items:center;gap:12px;font:400 26px var(--fun);letter-spacing:.06em;color:#FFD21F}
+.goalchip .spoonmark{width:22px;height:34px}
+.storyart.goalart{aspect-ratio:720/400;background:#1A1A1C}
+.goaltext{display:grid;justify-items:center;gap:8px}
+.story .gsub{margin:0;font:600 19px/1.45 var(--body);color:#E4E4E7;text-align:center;max-width:52ch}
+.story .gsub b{color:#fff}
+@media (max-width:700px){.goalchip{font-size:20px}.story .gsub{font-size:16px}}
