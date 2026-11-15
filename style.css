@@ -871,3 +871,6 @@ body{transition:background-color .35s ease}
 .tbtns{display:flex;align-items:center;gap:14px}
 .tback{appearance:none;border:0;background:none;padding:6px 4px;color:#9A8B7E;font:600 14px var(--body);cursor:pointer}
 .tback:hover{color:#5C4A3C;text-decoration:underline}
+/* Staff plan: a section lights up a little under the pointer, so players see it can be clicked */
+.rrplan .sec-hit{transition:fill .12s}
+.rrplan .sec-hit:hover,.rrplan .sec-hit:focus-visible{fill:rgba(255,246,214,.18);stroke:#FFE08A;stroke-width:3}
