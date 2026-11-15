@@ -1,7 +1,7 @@
 // ===== Rules engine (v2): replays both players' action logs into the game state =====
 // ⚠ Numbers marked TBD are placeholders until the team settles them.
 const CFG = {
-  rounds: 5, startCash: 100, startStars: 3,
+  rounds: 5, startCash: 200, startStars: 3,
   // price = income per table served (fixed, tips included)
   loc: {
     country: { name: 'Countryside', tag: '$$', open: 20, rent: 5, tables: 20, price: 8 },
