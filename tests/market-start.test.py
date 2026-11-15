@@ -37,12 +37,13 @@ async def to_market(browser, errs):
     await A.wait_for_timeout(500)
     # Day 1 has no Market: play through it (the service plays itself here) up to day 2's Market briefing
     for i in range(200):
-        if all([await pg.evaluate('__rr.S && __rr.S.phase') == 'market' for pg in pages]): break
+        phs = [await pg.evaluate('__rr.S && [__rr.S.phase, __rr.S.round]') for pg in pages]
+        if all(x and x[0] == 'market' for x in phs): break
         for pg in pages:
             for sel in ['[data-act=stage]:not([data-v=offer-back])', '[data-act=choose]', '[data-act=invest]', '[data-act=voucher]', '[data-act=next]']:
                 if await pg.locator(sel).count():
-                    try: await pg.locator(sel).first.click(timeout=1000)
-                    except Exception: pass
+                    # a plain DOM click: this is only setup, and some of these screens animate in (Playwright waits for "stable")
+                    await pg.evaluate('s => { const b = document.querySelector(s); if (b) b.click(); }', sel)
                     break
         await A.wait_for_timeout(150)
     await A.wait_for_timeout(800)
