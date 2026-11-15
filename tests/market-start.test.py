@@ -33,7 +33,7 @@ async def to_market(browser, errs):
     await A.click('[data-act=create]'); await A.wait_for_timeout(400)
     await B.fill('#code-in', await A.evaluate('__rr.code')); await B.click('form[data-form=join] button'); await B.wait_for_timeout(400)
     for pg in pages:
-        await pg.click('[data-act=introskip]'); await pg.locator('[data-act=picksel]').first.click(); await pg.locator('[data-act=pick]').first.click()
+        await pg.click('[data-act=introskip]'); await pg.click('[data-act=introskip]'); await pg.locator('[data-act=picksel]').first.click(); await pg.locator('[data-act=pick]').first.click()
     await A.wait_for_timeout(500)
     # Day 1 has no Market: play through it (the service plays itself here) up to day 2's Market briefing
     for i in range(200):
