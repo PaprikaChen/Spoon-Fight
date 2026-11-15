@@ -442,7 +442,7 @@ function F(defaults) {
 // =====================================================================
 // Rendering (UI v3). Every screen is built from plain words: what happened to you, and why.
 // =====================================================================
-const V = 'v31';
+const V = 'v34';
 const IMG = { art: `assets/key-art.jpg?v=${V}`, country: `assets/countryside.jpg?v=${V}`, city: `assets/city.jpg?v=${V}` };
 const STEPS = [['commit', 'Ads'], ['invest', 'Staff'], ['market', 'Market'], ['service', 'Service'], ['report', 'Recap']];
 // Day 1 has no Market (free food instead), and ads start on day CFG.adsFrom (then they are the first step), so early days have fewer steps
@@ -1356,7 +1356,7 @@ function recapHTML(s) {
     <div class="stack"><section class="panel edge"><span class="hint" style="font-weight:700;color:var(--muted)">For tomorrow</span><b style="font-size:15px;line-height:1.35">${tipA}</b><span style="font-size:13px;color:var(--ink2);line-height:1.45">${tipB}</span>${last ? '' : tomorrowFood}</section>
       <section class="panel" style="grid-template-columns:auto 1fr;align-items:center"><span class="dot round rival"></span><span style="font-size:13px;color:var(--ink2)"><b style="color:var(--ink)">${esc(nameOf(o))}</b> served ${rv.served + rv.delivered}, ${rv.turned} left unhappy${rd ? `, ${rd > 0 ? 'gained' : 'lost'} ${plural(Math.abs(rd), 'star')}` : ''}. ${S.reveals[o] && S.reveals[o].self.length ? `Their ads: ${S.reveals[o].self.map(id => esc(CFG.ads[id].name)).join(', ')}.` : 'No ads for their own restaurant.'}</span></section>
       ${btn}</div>
-  </div>${dayLogHTML(s)}`;
+  </div>`;   // the day-by-day table is on the final results page
 }
 // Every finished day for both restaurants (the old "Daily log" table), folded away by default
 function dayLogHTML(s) {
