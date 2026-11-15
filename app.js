@@ -17,7 +17,7 @@ const app = {
   nick: (lsGet('nick') || '').slice(0, 12), S: null, form: {}, priv: {}, revealing: {}, unsub: [], chain: Promise.resolve(),
   err: '', busy: false, loadNote: '', intro: 0,
   mkt: null, mktUnsub: null, cool: {}, claiming: {}, svc: {}, ticker: null,
-  howto: null, cover: null, acked: {},
+  howto: null, cover: null, acked: {}, mornSeen: {},
   invite: null, resume: null, showJoin: false
 };
 
@@ -400,7 +400,7 @@ function F(defaults) {
 // =====================================================================
 // Rendering (UI v3). Every screen is built from plain words: what happened to you, and why.
 // =====================================================================
-const V = 'v25';
+const V = 'v26';
 const IMG = { art: `assets/key-art.jpg?v=${V}`, country: `assets/countryside.jpg?v=${V}`, city: `assets/city.jpg?v=${V}` };
 const STEPS = [['commit', 'Ads'], ['invest', 'Staff'], ['market', 'Market'], ['service', 'Service'], ['report', 'Recap']];
 // Day 1 has no Market (free food instead), and ads start on day CFG.adsFrom (then they are the first step), so early days have fewer steps
@@ -644,9 +644,9 @@ function phaseHTML(s) {
   switch (S.phase) {
     case 'pick': return pickHTML(s);
     case 'morning': return `<section class="panel" style="justify-self:center"><p class="wait"><span class="dot round rival"></span>Opening up for the day…</p></section>`;
-    case 'invest': return buildHTML(s);
+    case 'invest': return needMorning(s) ? morningHTML(s) : buildHTML(s);
     case 'market': return marketHTML(s);
-    case 'commit': return adsHTML(s);
+    case 'commit': return needMorning(s) ? morningHTML(s) : adsHTML(s);
     case 'reveal': return `<section class="panel" style="justify-self:center"><p class="wait"><span class="dot round rival"></span>Turning over the ad cards…</p></section>`;
     case 'service': return serviceHTML(s);
     case 'voucher': return voucherHTML(s);
@@ -1006,11 +1006,41 @@ function adsHTML(s) {
 }
 // Before staff: how many ads the opponent placed for you (not which)
 function hiddenAdsHTML(s) {
-  const S = app.S, o = other(s), n = S.commits && S.commits[o] ? S.commits[o].nRival : 0;
-  return `<section class="adsflow"><div class="card2 adsc center"><h1 class="funt">Opponent ads: ${n}</h1>
-    <span class="fsub">${n ? `${esc(nameOf(o))} placed ${plural(n, 'ad')} for your restaurant. You'll find out what ${n === 1 ? 'it does' : 'they do'} right before the doors open.` : `${esc(nameOf(o))} didn't place any ads for your restaurant today.`}</span>
-    ${n ? `<div class="envs">${Array.from({ length: n }, (_, i) => `<span class="env" style="transform:rotate(${i % 2 ? 5 : -6}deg)"><b>?</b></span>`).join('')}</div>` : ''}
+  // Today's ads: yours face up, the opponent's for you face down (how many, not which)
+  const S = app.S, o = other(s), n = S.commits && S.commits[o] ? S.commits[o].nRival : 0, mine = myCards(s), ids = mine ? [...mine.self, ...mine.rival] : [];
+  const paid = S.commits && S.commits[s] ? S.commits[s].cost : 0;
+  return `<section class="adsflow"><div class="card2 adsc sumads"><h1 class="funt center">Today's ads</h1>
+    <div class="grp"><div class="gh"><b>Your ads</b><span>${ids.length ? `You paid $${paid}. ${esc(nameOf(o))} can't see these until right before dinner.` : 'You didn\'t place any ads today.'}</span></div>
+      ${ids.length ? `<div class="adhand">${ids.map(id => adCard(id, o, { button: false })).join('')}</div>` : ''}</div>
+    <div class="sep"></div>
+    <div class="grp"><div class="gh"><b>Ads from ${esc(nameOf(o))} for you: ${n}</b><span>${n ? "You'll see what they do right before the doors open." : 'None today.'}</span></div>
+      ${n ? `<div class="adhand">${Array.from({ length: n }, (_, i) => cardBack(i)).join('')}</div>` : ''}</div>
     <button class="cta inline" data-act="stage" data-v="ads">Ready</button></div></section>`;
+}
+// New day (day 2+): what happened overnight, rent in small print, and today's starting cash. Shown once, before the day's first step.
+const mornKey = s => `${app.code}:${app.seed}:${app.S.round}:${s}`;
+function needMorning(s) {
+  const S = app.S;
+  return S.round > 1 && !!S.waiting[s] && S.phase === (S.round >= CFG.adsFrom ? 'commit' : 'invest') && !app.mornSeen[mornKey(s)];
+}
+const SUNRISE = `<svg class="sunrise" viewBox="0 0 160 90" aria-hidden="true"><path d="M10 80 h140" stroke="#2B1D14" stroke-width="5" stroke-linecap="round"/><path d="M30 80 a50 50 0 0 1 100 0z" fill="#FFD21F" stroke="#2B1D14" stroke-width="5"/>
+  <path d="M80 12 v-10 M36 30 l-8 -8 M124 30 l8 -8 M18 62 h-10 M142 62 h10" stroke="#F4A261" stroke-width="5" stroke-linecap="round"/></svg>`;
+function morningHTML(s) {
+  const S = app.S, p = S.players[s], m = S.morning[s] || {}, L = CFG.loc[p.loc];
+  const prev = p.history[p.history.length - 1], fight = prev && prev.ledger.some(x => /hurt in a fight/.test(x.label));
+  const ev = (cls, em, h, t) => `<div class="evt ${cls}"><span class="em" aria-hidden="true">${em}</span><span><b>${h}</b>${t}</span></div>`;
+  const list = [];
+  if (m.robbed) list.push(ev('bad', '🦝', `Break-in overnight: −${usd(m.robbed)}`, 'A thief got into the till while you slept.'));
+  if (m.arrived) list.push(ev('good', '📦', `${plural(m.arrived, 'plate')} arrived`, "Your Regular order from yesterday is in the kitchen."));
+  if (fight) list.push(ev('good', '🐰', 'Your hurt bunnies are back', 'They are ready to work again today.'));
+  if (!list.length) list.push(ev('info', '🌙', 'A quiet night', 'Nothing happened overnight.'));
+  if (S.round === CFG.rounds - 1) list.push(ev('info', '⚡', 'Tomorrow is the last day', 'The Market will only sell Express food.'));
+  if (S.round === CFG.rounds) list.push(ev('info', '🏁', 'Last day!', 'Tonight decides who wins the Golden Spoon.'));
+  return `<section class="adsflow"><div class="card2 adsc center morn">${SUNRISE}<span class="kick">Next day</span><h1 class="funt big">Day ${S.round}</h1>
+    <div class="evts">${list.join('')}</div>
+    <div class="cashday"><span class="l">You start today with</span><span class="v">${usd(p.cash)}</span></div>
+    <span class="rent">Rent −$${L.rent} was paid this morning.</span>
+    <button class="cta inline" data-act="mornok">Start day ${S.round}</button></div></section>`;
 }
 // Right before the doors open: what the opponent's ads do to you tonight
 const RECEIVED = {
@@ -1393,6 +1423,7 @@ document.addEventListener('click', e => {
     case 'inc': { const f = F({}); f[b.dataset.f] = Math.max(0, (f[b.dataset.f] || 0) + Number(b.dataset.d)); return render(); }
     case 'choose': { const f = F({}); f.choice = b.dataset.c; return render(); }
     case 'stage': { const f = F({}), v = b.dataset.v; if (v === 'gift') f.gift = true; else if (v === 'offer') f.offer = true; else if (v === 'ads') f.seenAds = true; return render(); }
+    case 'mornok': app.mornSeen[mornKey(s)] = true; return render();
     case 'astep': { const f = F({}); f.astep = b.dataset.v; return render(); }
     case 'loan': { const f = F({}); f.loan = b.dataset.v === '1'; return render(); }
     case 'hiretipback': { const f = F({}); f.tip = Math.max(0, (f.tip || 0) - 1); return render(); }

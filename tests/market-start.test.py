@@ -40,7 +40,7 @@ async def to_market(browser, errs):
         phs = [await pg.evaluate('__rr.S && [__rr.S.phase, __rr.S.round]') for pg in pages]
         if all(x and x[0] == 'market' for x in phs): break
         for pg in pages:
-            for sel in ['[data-act=hiretip]', '[data-act=stage]:not([data-v=offer-back])', '[data-act=choose]', '[data-act=invest]', '[data-act=voucher]', '[data-act=next]']:
+            for sel in ['[data-act=mornok]', '[data-act=hiretip]', '[data-act=stage]:not([data-v=offer-back])', '[data-act=choose]', '[data-act=invest]', '[data-act=voucher]', '[data-act=next]']:
                 if await pg.locator(sel).count():
                     # a plain DOM click: this is only setup, and some of these screens animate in (Playwright waits for "stable")
                     await pg.evaluate('s => { const b = document.querySelector(s); if (b) b.click(); }', sel)

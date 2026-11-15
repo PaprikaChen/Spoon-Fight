@@ -918,3 +918,18 @@ body{transition:background-color .35s ease}
 .radc{width:220px;border-radius:18px;border:3px solid var(--rival);background:var(--surface);padding:16px;display:grid;gap:8px;justify-items:center}
 .radc .em{font-size:52px;line-height:1}.radc b{font-size:17px}.radc .big{font:400 30px var(--fun);color:var(--rival)}.radc>span:last-child{font-size:13px;line-height:1.35;color:var(--ink2)}
 @media (max-width:700px){.btiles{grid-template-columns:1fr}.adsc{padding:20px 16px}.adsc .funt.big{font-size:38px}}
+/* New-day page and Today's ads */
+.morn{gap:14px;max-width:640px}
+.morn .sunrise{width:160px;height:90px}
+.morn .kick{font:800 13px var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.evts{display:grid;gap:10px;width:100%}
+.evt{display:flex;align-items:center;gap:14px;text-align:left;border-radius:16px;padding:12px 16px;font-weight:600;font-size:16px;line-height:1.35}
+.evt .em{font-size:30px;width:40px;text-align:center;flex:none}.evt b{display:block;font-weight:800}
+.evt.bad{background:#FFECEB;color:#9B1C12}.evt.good{background:#EAF7EE;color:#14532D}.evt.info{background:var(--sunk,#F4F4F5);color:var(--ink2)}
+.cashday{display:grid;gap:2px;justify-items:center}.cashday .v{font:400 54px/1 var(--fun);color:var(--ink)}.cashday .l{font-weight:700;font-size:13px;color:var(--muted)}
+.morn .rent{font-size:12px;color:var(--muted)}
+.sumads .center{text-align:center}
+.sumads .grp{display:grid;gap:8px}
+.sumads .gh{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 10px}.sumads .gh b{font-size:17px}.sumads .gh span{font-size:14px;color:var(--muted)}
+.sumads .adhand .acard{width:170px}
+.sumads .sep{height:1px;background:var(--line)}

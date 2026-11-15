@@ -3,7 +3,7 @@ from playwright.async_api import async_playwright
 
 # Plays a full v2 game as two players on two pages over the fake backend (tests/fake-backend.js).
 # Usage: python tests/online.test.py http://localhost:8765/index.html
-ORDER = ['[data-act=introskip]', '[data-act=mkstart]', '[data-act=pick]', '[data-act=next]', '[data-act=voucher]',
+ORDER = ['[data-act=mornok]', '[data-act=introskip]', '[data-act=mkstart]', '[data-act=pick]', '[data-act=next]', '[data-act=voucher]',
          '[data-act=flip]', '[data-act=play]', '[data-act=picksel]']
 # The real-time service plays itself in this test (window.__RR_SVC_AUTO) at 20x speed; the result is logged like a real night
 
@@ -13,6 +13,7 @@ async def step(pg, state):
 
 async def _step(pg, state):
     ph = await pg.evaluate('__rr.S && __rr.S.phase')
+    if await pg.locator('[data-act=mornok]').count(): await pg.locator('[data-act=mornok]').click(); return  # new-day page
     if ph == 'invest':
         if await pg.locator('[data-act=choose]').count() and not await pg.locator('[data-act=stage]').count(): await pg.locator('[data-act=choose]').first.click(); return  # pick an answer once, then continue
         if await pg.locator('[data-act=stage]:not([data-v=offer-back])').count(): await pg.locator('[data-act=stage]:not([data-v=offer-back])').first.click(); return  # gift screen, then the offer card

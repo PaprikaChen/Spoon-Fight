@@ -70,6 +70,8 @@ window.__shot = (() => {
       form: {}, priv: {}, svc: {}, cool: {}, claiming: {}, mkt: null });
     for (const s of ['p1', 'p2']) if (g.priv[s]) a.priv[`shot:${S.round}:${s}`] = g.priv[s];
     if (extra.form) a.form[`${view}|${S.waiting[view]}`] = extra.form;
+    // the new-day page shows once per day; screens skip it unless they ask for it
+    a.mornSeen = extra.morning ? {} : { [`shot:${g.seed}:${S.round}:${view}`]: true };
     if (extra.market) {
       const now = Date.now(), items = S.market.items;
       a.mkt = { key: `shot:${g.seed}:${S.round}`, owner: extra.market.owner, start: extra.market.elapsed == null ? null : now - extra.market.elapsed * 1000, ready: extra.market.ready || {}, mine: {} };
@@ -118,6 +120,8 @@ SCREENS = [
   ('10-market', "{ const g = __shot.playTo('shot0', 'market', 2); __shot.load(g, 'p1', { market: { owner: { 0: 'p1', 1: 'p2', 2: 'p2', 4: 'p1', 5: 'p2' }, elapsed: 24, cooling: 4 } }) }"),
   ('11-market-last-day', "{ const g = __shot.find('market', 5, S => true, { loc: { p1: 'country', p2: 'country' }, rush: true }); __shot.load(g, 'p1', { market: { owner: { 0: 'p2' }, elapsed: 5 } }) }"),
   ('12f-staff-day3-after-ads', "{ const g = __shot.playTo('shot0', 'invest', 3); __shot.load(g, 'p1', { form: { staff: [0, 2, 5], choice: null, offer: true, seenAds: true } }) }"),
+  ('11b-new-day', "__shot.load(__shot.playTo('shot0', 'commit', 3), 'p1', { morning: true })"),
+  ('11c-new-day-break-in', "{ const g = __shot.find('invest', null, S => S.round > 1 && S.morning.p1 && S.morning.p1.robbed > 0); if (g) __shot.load(g, 'p1', { morning: true }) }"),
   ('12a-ads-intro', "__shot.load(__shot.playTo('shot0', 'commit', 3), 'p1')"),
   ('12b-ads-budget', "__shot.load(__shot.playTo('shot0', 'commit', 3), 'p1', { form: { sel: [], astep: 'budget' } })"),
   ('12c-ads-yours', "{ const g = __shot.playTo('shot0', 'commit', 3); __shot.load(g, 'p1', { form: { sel: [g.S.shops.p1.self[0]], astep: 'self' } }) }"),
