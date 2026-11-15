@@ -46,6 +46,8 @@ A two-player web game that teaches restaurant management to players aged 13+. It
 12. **One-screen practice**: before steps with secrets (`PRIVATE_PHASES`: pick, invest, commit) a cover screen (`coverHTML()`) asks the other player to look away.
 15. **Start screens**: `lobbyHTML()` shows the invite page when the URL has `?room=CODE` (`app.invite`, set in `boot()`), the "still going" card when this device has an unfinished game (`app.resume`, from `loadResume()`), otherwise the first-visit page. Online, until seat p2 is taken, the game shows the waiting room (`roomHTML()`, `inRoom()`) instead of the story. Story pictures are `ART.story(i, rivalName)`; after the 5 story pages come 4 goal pages (`GOAL_PAGES` in `app.js`, pictures `ART.goal()`; `app.intro` counts through both, Skip on the story jumps to the goal pages); pick needs a tap to select (`picksel`, `f.loc`) and then the Open button.
 
+16. **Ending (after day 5)**: `endingHTML()` shows, per player (`app.endStep`): doors closed → the judges count (both), then you won → reward (winner) or you lost → consolation with the winner's fixed note `WINNER_NOTE` (loser), then the summary `finalHTML()`, which has a Share button (`shareSummary()`: a picture of the page made with `vendor/html2canvas-1.4.1.min.js`, shared or downloaded). Draws and bankruptcies skip the win/lose pages. Pictures: `assets/ending-cat-wins.webp`, `assets/ending-dog-wins.webp`.
+
 ## Firestore data
 
 ```

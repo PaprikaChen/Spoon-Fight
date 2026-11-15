@@ -80,6 +80,7 @@ window.__shot = (() => {
     if (extra.svc) a.svc[view] = { key: `shot:${g.seed}:${S.round}:${view}`, started: true, flip: 0, ...extra.svc };
     window.__RR_SVC_FAST = extra.fast || 1;
     if (extra.cover) a.cover = view;
+    a.endStep = { [view]: extra.end ?? 4 };   // the ending pages; 4 = the summary
     if (extra.intro != null) a.intro = extra.intro;
     poke();
     return S;
@@ -135,6 +136,12 @@ SCREENS = [
   ('17-vouchers', "{ const g = __shot.find('voucher', null, S => !!S.waiting.p1); __shot.load(g, 'p1', { form: { n: 1 } }) }"),
   ('17b-vouchers-three', "{ const g = __shot.find('voucher', null, S => !!S.waiting.p1 && S.service.p1.turned >= 3); if (g) __shot.load(g, 'p1', { form: { n: 2 } }) }"),
   ('18-recap', "__shot.load(__shot.playTo('shot0', 'report', 3, { rush: true }))"),
+  ('19a-ending-doors', "{ const g = __shot.find('over', null, S => S.result.reason === 'done' && S.result.winner !== 'draw', { loc: { p1: 'country', p2: 'country' }, rush: true }); if (g) __shot.load(g, g.S.result.winner, { end: 0 }) }"),
+  ('19b-ending-count', "{ const g = __shot.find('over', null, S => S.result.reason === 'done' && S.result.winner !== 'draw', { loc: { p1: 'country', p2: 'country' }, rush: true }); if (g) __shot.load(g, g.S.result.winner, { end: 1 }) }"),
+  ('19c-ending-won', "{ const g = __shot.find('over', null, S => S.result.reason === 'done' && S.result.winner !== 'draw', { loc: { p1: 'country', p2: 'country' }, rush: true }); if (g) __shot.load(g, g.S.result.winner, { end: 2 }) }"),
+  ('19d-ending-reward', "{ const g = __shot.find('over', null, S => S.result.reason === 'done' && S.result.winner !== 'draw', { loc: { p1: 'country', p2: 'country' }, rush: true }); if (g) __shot.load(g, g.S.result.winner, { end: 3 }) }"),
+  ('19e-ending-lost', "{ const g = __shot.find('over', null, S => S.result.reason === 'done' && S.result.winner !== 'draw', { loc: { p1: 'country', p2: 'country' }, rush: true }); if (g) __shot.load(g, g.S.result.winner === 'p1' ? 'p2' : 'p1', { end: 2 }) }"),
+  ('19f-ending-consolation', "{ const g = __shot.find('over', null, S => S.result.reason === 'done' && S.result.winner !== 'draw', { loc: { p1: 'country', p2: 'country' }, rush: true }); if (g) __shot.load(g, g.S.result.winner === 'p1' ? 'p2' : 'p1', { end: 3 }) }"),
   ('19-final', "__shot.load(__shot.find('over', null, S => S.result.reason === 'done', { loc: { p1: 'country', p2: 'country' }, rush: true }))"),
   ('20-final-closed', "{ const g = __shot.find('over', null, S => S.result.reason === 'bankrupt', { food: 0, staff: [0, 1, 2, 3, 4, 5, 6, 7] }); if (g) __shot.load(g, 'p1') }"),
 ]

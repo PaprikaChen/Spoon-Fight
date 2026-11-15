@@ -17,7 +17,7 @@ const app = {
   nick: (lsGet('nick') || '').slice(0, 12), S: null, form: {}, priv: {}, revealing: {}, unsub: [], chain: Promise.resolve(),
   err: '', busy: false, loadNote: '', intro: 0,
   mkt: null, mktUnsub: null, cool: {}, claiming: {}, svc: {}, ticker: null,
-  howto: null, cover: null, acked: {}, mornSeen: {},
+  howto: null, cover: null, acked: {}, mornSeen: {}, endStep: {},
   invite: null, resume: null, showJoin: false
 };
 
@@ -400,7 +400,7 @@ function F(defaults) {
 // =====================================================================
 // Rendering (UI v3). Every screen is built from plain words: what happened to you, and why.
 // =====================================================================
-const V = 'v27';
+const V = 'v28';
 const IMG = { art: `assets/key-art.jpg?v=${V}`, country: `assets/countryside.jpg?v=${V}`, city: `assets/city.jpg?v=${V}` };
 const STEPS = [['commit', 'Ads'], ['invest', 'Staff'], ['market', 'Market'], ['service', 'Service'], ['report', 'Recap']];
 // Day 1 has no Market (free food instead), and ads start on day CFG.adsFrom (then they are the first step), so early days have fewer steps
@@ -651,7 +651,7 @@ function phaseHTML(s) {
     case 'service': return serviceHTML(s);
     case 'voucher': return voucherHTML(s);
     case 'report': return recapHTML(s);
-    case 'over': return finalHTML(s);
+    case 'over': return endingHTML(s);
   }
   return '';
 }
@@ -1327,6 +1327,68 @@ function dayLogHTML(s) {
     <div style="overflow-x:auto"><table><thead><tr><th>Day</th><th>Came</th><th>Served</th><th>Left unhappy</th><th>Thrown away</th><th>Money in</th><th>Money out</th><th>Cash</th><th>Stars</th></tr></thead><tbody>${rows.join('')}</tbody></table></div></details>`;
 }
 
+// ---------- the ending after day 5 (team sketch; prototypes/ending) ----------
+// Both players: doors closed → the judges count. Winner: you won → reward. Loser: you lost → consolation. Then the summary (finalHTML).
+// A draw or a bankruptcy skips the win/lose pages. The step is page-only (app.endStep), per player.
+const END_PIC = { p1: 'assets/ending-cat-wins.webp', p2: 'assets/ending-dog-wins.webp' };   // who wins → the picture where that chef celebrates
+// where each chef sits in each picture (CSS background-position): happy winner and sad loser
+const END_CROP = { p1: { win: '6% 40%', lose: '6% 62%' }, p2: { win: '94% 40%', lose: '96% 62%' } };  // the cat is always on the left, the dog on the right
+// The winner's note to the loser (fixed; ties back to the story of the two partners)
+const WINNER_NOTE = "Hey partner… good game! 🥄 Remember when the two of us ran the Two Spoons together? Honestly, the kitchen feels way too quiet without you. Wanna come back and cook with me? I'll even let you hold the big spoon. 💛";
+const avatar = (s, cls = '') => `<span class="eav ${s === 'p1' ? 'cat' : 'dog'} ${cls}" aria-hidden="true"></span>`;
+function endingHTML(s) {
+  const S = app.S, R = S.result, o = other(s), sc = R.score;
+  const step = app.endStep[s] || 0, decided = R.reason === 'done' && R.winner !== 'draw', won = R.winner === s;
+  const you = app.mode === 'online' ? 'You' : esc(nameOf(s)), next = (label, n) => `<button class="cta inline" data-act="endstep" data-n="${n}">${label}</button>`;
+  if (R.reason !== 'done' || step >= 4) return finalHTML(s);
+  const gap = usd(round2(Math.abs(sc[s].total - sc[o].total)));
+  const wrap = (inner, cls = '') => `<section class="ending ${cls}"><div class="ein">${inner}</div></section>`;
+  if (step === 0) return wrap(`<svg class="moon" viewBox="0 0 90 90" aria-hidden="true"><path d="M60 10 a38 38 0 1 0 20 52 a30 30 0 1 1 -20 -52z" fill="#FFD21F"/><circle cx="20" cy="20" r="3" fill="#FFF7D6"/><circle cx="76" cy="26" r="2" fill="#FFF7D6"/></svg>
+    <span class="ekick">Day ${CFG.rounds} · the last service is over</span><h1 class="efun">The doors are closed</h1><p class="esub">The judges are counting the money…</p>
+    <div class="edots" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="epair"><div class="ewho">${avatar(s)}<span class="${s === 'p1' ? 'you' : 'riv'}">${you}</span></div><div class="ewho">${avatar(o)}<span class="${o === 'p1' ? 'you' : 'riv'}">${esc(nameOf(o))}</span></div></div>
+    ${next('See the count', 1)}`);
+  if (step === 1) {
+    const box = (w, cls, name) => { const p = S.players[w], x = sc[w];
+      const c = w === 'p1' ? 'you' : 'riv';
+      return `<div class="ebal ${c}"><div class="ewho row">${avatar(w, 'sm')}<span class="${c}">${name}</span></div>
+        <div class="eline"><span>Cash</span><b>${usd(x.cash)}</b></div>
+        <div class="eline"><span class="estars" aria-label="${x.stars} of 5 stars">${'★'.repeat(x.stars)}<s>${'★'.repeat(5 - x.stars)}</s></span><b>${x.stars} × $${CFG.starValue} = $${x.starPts}</b></div>
+        ${x.loan ? `<div class="eline"><span>Loan to pay back</span><b>${usd(x.loan)}</b></div>` : ''}
+        <div class="etot"><span>Total</span><b>${usd(x.total)}</b></div></div>`; };
+    return wrap(`<span class="ekick">The judges count</span><h1 class="efun sm">Money + $${CFG.starValue} for every star</h1>
+      <div class="etally">${box(s, 'you', you)}${box(o, 'riv', esc(nameOf(o)))}</div>
+      <span class="erule">If the totals are equal, more stars wins.</span>
+      ${decided ? next('And the winner is…', 2) : next('See the results', 4)}`);
+  }
+  const pic = END_PIC[R.winner], crop = (w, mood, cls) => `<span class="ecrop ${cls}" style="background-image:url(${pic});background-position:${END_CROP[w][mood]}" aria-hidden="true"></span>`;
+  if (step === 2 && won) return wrap(`<span class="ebadge" aria-hidden="true">${ART.badge('end')}</span><span class="ekick gold2">Congratulations</span>
+    <h1 class="efun big">You won the</h1><span class="espoon">GOLDEN SPOON!</span><p class="esub">You beat ${esc(nameOf(o))} by ${gap}.</p>${next('Continue', 3)}`, 'glow');
+  if (step === 2) return wrap(`<div class="etwo">${crop(s, 'lose', s === 'p1' ? 'you' : 'riv')}<div class="ecol"><span class="ekick">The judges have decided</span>
+    <h1 class="efun sm">Unfortunately, you lost the competition</h1><p class="esub">${esc(nameOf(o))} won the Golden Spoon by ${gap}.</p><div>${next('Continue', 3)}</div></div></div>`);
+  if (won) return wrap(`<span class="ekick">Your reward</span><h1 class="efun sm">The Two Spoons is yours again!</h1>
+    <img class="epic" src="${pic}" alt="Your chef celebrates with the golden spoon at the Two Spoons">
+    <p class="esub">Congratulations! You got your restaurant back.</p>${next('Summary', 4)}`);
+  return wrap(`<h1 class="efun sm">Better luck next time!</h1>
+    <div class="econs"><div class="epair2">${crop(s, 'lose', 'sm2')}<span class="eplus">+</span>${crop(o, 'win', 'sm2')}</div>
+      <div class="equote">“${esc(WINNER_NOTE)}”<small>— a note from ${esc(nameOf(o))}, the winner</small></div></div>
+    ${next('Summary', 4)}`);
+}
+// Share: a picture of the summary page (html2canvas, loaded on first use from vendor/), shared or downloaded
+async function shareSummary() {
+  const el = document.querySelector('#app');
+  try {
+    if (!window.html2canvas) await new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'vendor/html2canvas-1.4.1.min.js'; sc.onload = ok; sc.onerror = no; document.head.appendChild(sc); });
+    const bg = getComputedStyle(document.body).backgroundColor;
+    const canvas = await window.html2canvas(el, { backgroundColor: bg, scale: Math.min(2, window.devicePixelRatio || 1), ignoreElements: n => n.dataset && n.dataset.act === 'share' });
+    const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+    const file = new File([blob], 'spoon-fight-result.png', { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Spoon Fight' }); return; }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'spoon-fight-result.png'; document.body.appendChild(a); a.click(); a.remove();
+    toast('Picture saved: spoon-fight-result.png');
+  } catch (e) { if (!(e && e.name === 'AbortError')) toast("Couldn't make the picture. Try a screenshot instead."); }
+}
+
 // ---------- final results ----------
 function finalHTML(s) {
   const S = app.S, R = S.result, sc = R.score, o = other(s), p = S.players[s], q = S.players[o];
@@ -1372,14 +1434,15 @@ function finalHTML(s) {
         ${a.length ? `<circle cx="${X(a.length - 1)}" cy="${Y(a[a.length - 1])}" r="6" fill="var(--you)"/>` : ''}${b.length ? `<circle cx="${X(b.length - 1)}" cy="${Y(b[b.length - 1])}" r="5" fill="var(--rival)"/>` : ''}</svg>` : ''}
       <span style="font-size:13px;color:var(--ink2)">${lead} Your best day was day ${bestDay.round} (${usd(round2(bestDay.income + bestDay.spend))}).</span></section>
     <section class="panel" style="padding:22px 24px"><h2 style="font-family:var(--display);font-size:20px">Your game in numbers</h2>
-      <div class="tiles two"><div class="tile"><span class="v">${served} of ${came}</span><span class="s">guests got a table</span></div><div class="tile"><span class="v">${CFG.startStars} → ${p.stars} ★</span><span class="s">stars, start to finish</span></div>
-        <div class="tile"><span class="v">${plural(spoiled, 'plate')}</span><span class="s">thrown away</span></div><div class="tile"><span class="v">${usd(adsSpent)}</span><span class="s">spent on ads and tricks</span></div></div></section>
+      <div class="tiles two"><div class="tile"><span class="v">${served} of ${came}</span><span class="s">guests served</span></div><div class="tile"><span class="v">${CFG.startStars} → ${p.stars} ★</span><span class="s">stars, start to finish</span></div>
+        <div class="tile"><span class="v">${plural(spoiled, 'plate')}</span><span class="s">thrown away</span></div><div class="tile"><span class="v">${usd(adsSpent)}</span><span class="s">spent on ads</span></div></div></section>
   </div>
   <div class="final-mid">
     <section class="panel talk" style="padding:22px 24px"><div class="row" style="justify-content:space-between"><h2 style="font-family:var(--display);font-size:20px">Talk it over with ${esc(nameOf(o))}</h2><span class="hint">about 5 minutes</span></div>
-      <ol><li>${gold(1, 'sm')}How many guests a day did you need to break even?</li><li>${gold(2, 'sm')}Which day were you short on tables or food? What would you change?</li>
-        <li>${gold(3, 'sm')}Which ad was worth its price? Which trick hurt you most?</li><li>${gold(4, 'sm')}Did you take the shady deal? Would you again?</li></ol></section>
-    <section class="again"><b>${meWon ? 'Think you can win by more?' : 'Want a rematch?'}</b><span>Each game deals different offers, cards and surprises. ${p.loc === 'city' ? 'Try the Countryside' : 'Try the City'} next time.</span>
+      <ol><li>${gold(1, 'sm')}How many guests a day did you need to break even?</li><li>${gold(2, 'sm')}Which day were you short on staff or food? What would you change?</li>
+        <li>${gold(3, 'sm')}Which ad was worth its price? Which of their ads hurt you most?</li><li>${gold(4, 'sm')}Did you take the shady deal? Would you again?</li></ol></section>
+    <section class="again"><b>${meWon ? 'Think you can win by more?' : 'Want a rematch?'}</b><span>Each game deals different offers, ads and surprises. ${p.loc === 'city' ? 'Try the Countryside' : 'Try the City'} next time.</span>
+      <button class="ghost" data-act="share">📸 Share a picture of this page</button>
       ${app.mode === 'local' ? '<button class="cta" data-act="local">Play again</button>' : `<button class="cta" data-act="create">Start a new game</button>`}<button class="ghost" data-act="leave">Back to the start</button></section>
   </div>${dayLogHTML(s)}`;
 }
@@ -1423,6 +1486,8 @@ document.addEventListener('click', e => {
     case 'inc': { const f = F({}); f[b.dataset.f] = Math.max(0, (f[b.dataset.f] || 0) + Number(b.dataset.d)); return render(); }
     case 'choose': { const f = F({}); f.choice = b.dataset.c; return render(); }
     case 'stage': { const f = F({}), v = b.dataset.v; if (v === 'gift') f.gift = true; else if (v === 'offer') f.offer = true; else if (v === 'ads') f.seenAds = true; return render(); }
+    case 'endstep': app.endStep[s] = Number(b.dataset.n); window.scrollTo(0, 0); return render();
+    case 'share': return shareSummary();
     case 'mornok': app.mornSeen[mornKey(s)] = true; return render();
     case 'astep': { const f = F({}); f.astep = b.dataset.v; return render(); }
     case 'loan': { const f = F({}); f.loan = b.dataset.v === '1'; return render(); }
