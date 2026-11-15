@@ -20,7 +20,7 @@ function bot(S, seat, rnd, priv) {
     case 'commit': {
       const sh = S.shops[seat], c = { self: pickSome(sh.self), rival: pickSome(sh.rival) }, salt = String(rnd());
       priv[seat] = { ...c, salt };
-      return { k, h: E.adHash(c, salt), nSelf: c.self.length, nRival: c.rival.length };
+      return { k, h: E.adHash(c, salt), nSelf: c.self.length, nRival: c.rival.length, cost: E.adCost(c) };
     }
     case 'reveal': return { k, ...(rnd() < 0.03 ? { ...priv[seat], self: ['flyer'] } : priv[seat]) };
     case 'service': {

@@ -32,7 +32,7 @@ window.__shot = (() => {
       }
       case 'commit': {
         const sh = S.shops[s], c = { self: opt.noAds ? [] : sh.self.slice(0, 1), rival: opt.noAds ? [] : sh.rival.slice(0, 1) };
-        priv[s] = { ...c, salt }; return { k, h: adHash(c, salt), nSelf: c.self.length, nRival: c.rival.length };
+        priv[s] = { ...c, salt }; return { k, h: adHash(c, salt), nSelf: c.self.length, nRival: c.rival.length, cost: adCost(c) };
       }
       case 'reveal': return { k, ...priv[s] };
       case 'service': {
