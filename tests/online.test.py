@@ -3,9 +3,9 @@ from playwright.async_api import async_playwright
 
 # Plays a full v2 game as two players on two pages over the fake backend (tests/fake-backend.js).
 # Usage: python tests/online.test.py http://localhost:8765/index.html
-ORDER = ['[data-act=introskip]', '[data-act=mkstart]', '[data-act=pick]', '[data-act=next]', '[data-act=voucher]', '[data-act=svcdone]',
-         '[data-act=svc][data-a=refuse]', '[data-act=svc][data-a=rush]:not([disabled])', '[data-act=svc][data-a=letgo]',
+ORDER = ['[data-act=introskip]', '[data-act=mkstart]', '[data-act=pick]', '[data-act=next]', '[data-act=voucher]',
          '[data-act=flip]', '[data-act=play]', '[data-act=picksel]']
+# The real-time service plays itself in this test (window.__RR_SVC_AUTO) at 20x speed; the result is logged like a real night
 
 async def step(pg, state):
     try: await _step(pg, state)
@@ -16,6 +16,9 @@ async def _step(pg, state):
     if ph == 'invest':
         if await pg.locator('[data-act=choose]').count(): await pg.locator('[data-act=choose]').first.click()
         if await pg.locator('[data-act=stage]:not([data-v=offer-back])').count(): await pg.locator('[data-act=stage]:not([data-v=offer-back])').first.click(); return  # gift screen, then the offer card
+        hires = state.setdefault('hires', {})
+        if hires.get(id(pg)) != (await pg.evaluate('__rr.S.round')) and await pg.locator('[data-act=hire]').count():
+            hires[id(pg)] = await pg.evaluate('__rr.S.round'); await pg.locator('[data-act=hire]').nth(1).click(); return  # hire (or let go) one bunny each day
         if await pg.locator('[data-act=invest]:not([disabled])').count(): await pg.locator('[data-act=invest]').click(); return
     if ph == 'market' and await pg.locator('[data-act=mkdone]').count():
         n = state.setdefault('grabs', {}).get(id(pg), 0)
@@ -33,12 +36,12 @@ async def _step(pg, state):
 
 async def main():
     async with async_playwright() as p:
-        b = await p.chromium.launch(); ctx = await b.new_context(viewport={'width': 1200, 'height': 900}); ctx.set_default_timeout(1500); ctx.set_default_navigation_timeout(30000)
+        b = await p.chromium.launch(**({'executable_path': os.environ['RR_CHROMIUM']} if os.environ.get('RR_CHROMIUM') else {})); ctx = await b.new_context(viewport={'width': 1200, 'height': 900}); ctx.set_default_timeout(1500); ctx.set_default_navigation_timeout(30000)
         fake = open(os.path.join(os.path.dirname(__file__), 'fake-backend.js')).read(); errs = []
         pages = []
         for uid, nick in [('u1', 'Sam'), ('u2', 'Alex')]:
             pg = await ctx.new_page()
-            await pg.add_init_script(f"window.__RR_UID='{uid}';" + fake)
+            await pg.add_init_script(f"window.__RR_UID='{uid}';window.__RR_SVC_AUTO=1;window.__RR_SVC_FAST=20;" + fake)
             pg.on('pageerror', lambda e: errs.append(str(e)))
             await pg.goto(sys.argv[1]); await pg.wait_for_timeout(300)
             await pg.fill('#nick-in', nick); pages.append(pg)
@@ -56,7 +59,7 @@ async def main():
         print('phases', phA, phB, 'loops', i)
         print('same result:', ra == rb, ra)
         print('reveal ok:', await A.evaluate('JSON.stringify(Object.fromEntries(Object.entries(__rr.S.reveals).map(([k,v])=>[k,v.ok])))'))
-        print('history p1:', await A.evaluate('JSON.stringify(__rr.S.players.p1.history.map(h=>[h.round,h.demand,h.served,h.turned,h.cash,h.stars]))'))
+        print('history p1:', await A.evaluate('JSON.stringify(__rr.S.players.p1.history.map(h=>[h.round,h.demand,h.served,h.turned,h.cash,h.stars,h.staff]))'))
         print('click retries', state.get('retries', 0))
         print('errors', errs[:5])
         await b.close()

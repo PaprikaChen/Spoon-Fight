@@ -24,7 +24,7 @@ window.__shot = (() => {
     switch (S.phase) {
       case 'pick': return { k, loc: (opt.loc && opt.loc[s]) || (s === 'p1' ? 'country' : 'city') };
       case 'morning': return { k };
-      case 'invest': return { k, tables: opt.tables != null ? opt.tables : 1, choice: opt.choice || 'decline' };
+      case 'invest': return { k, staff: opt.staff || [0, 2, 5], choice: opt.choice || 'decline' };
       case 'market': {
         const want = opt.food != null ? opt.food : 4, buys = [];
         S.market.items.forEach((t, i) => { if (buys.length < want && (i % 2 === (s === 'p1' ? 0 : 1))) buys.push(i); });
@@ -36,14 +36,11 @@ window.__shot = (() => {
       }
       case 'reveal': return { k, ...priv[s] };
       case 'service': {
-        const ops = []; let closed = 0;
-        for (let g = 0; g < 60; g++) {
-          const v = serviceRun(S, s, ops, closed); if (!v.pending) break;
-          if (v.pending.kind === 'food') { ops.push({ a: 'food', give: true }); continue; }
-          if (opt.rush && v.pending.tries < 1) { ops.push({ ep: v.pending.ep, a: 'rush' }); continue; }
-          closed++;
-        }
-        return { k, ops };
+        // The real night is played in real time on the page; here a stand-in result from the engine
+        const res = autoService(S, s);
+        if (opt.rush) { res.rushN = 1; res.served = Math.min(res.served + 1, S.script[s].tableGuests); res.unhappy = Math.max(0, res.unhappy - 1); }
+        if (S.script[s].mid === 'food') res.food = 'give';
+        return { k, res };
       }
       case 'voucher': return { k, n: 0 };
       case 'report': return { k };
@@ -78,7 +75,8 @@ window.__shot = (() => {
       a.mkt = { key: `shot:${g.seed}:${S.round}`, owner: extra.market.owner, start: extra.market.elapsed == null ? null : now - extra.market.elapsed * 1000, ready: extra.market.ready || {}, mine: {} };
       if (extra.market.cooling != null) { const i = extra.market.cooling; a.cool[view] = { i, type: items[i], start: now - 1000, until: now + CFG.market[items[i]].cd * 1000 - 1000 }; }
     }
-    if (extra.svc) a.svc[view] = { key: `shot:${g.seed}:${S.round}:${view}`, started: true, ops: [], busy: null, waitAt: Date.now() - 3000, last: Date.now(), fast: false, msg: '', ...extra.svc };
+    if (extra.svc) a.svc[view] = { key: `shot:${g.seed}:${S.round}:${view}`, started: true, flip: 0, ...extra.svc };
+    window.__RR_SVC_FAST = extra.fast || 1;
     if (extra.cover) a.cover = view;
     if (extra.intro != null) a.intro = extra.intro;
     poke();
@@ -104,34 +102,32 @@ SCREENS = [
   ('04b-pick-selected', "{ const g = __shot.playTo('shot0', 'pick'); __shot.load(g, 'p1', { form: { loc: 'country' } }) }"),
   ('05-practice-cover', "__shot.load(__shot.playTo('shot0', 'invest', 1), 'p2', { cover: true })"),
   ('05b-gift-day1', "__shot.load(__shot.playTo('shot0', 'invest', 1), 'p1', { form: { tables: 0, choice: null } })"),
-  ('06-build-day1', "__shot.load(__shot.playTo('shot0', 'invest', 1), 'p1', { form: { tables: 2, choice: null, gift: true, offer: true } })"),
-  ('07a-morning-booking', "{ const g = __shot.find('invest', 2, S => S.events.p1.type === 'noshow'); __shot.load(g, 'p1', { form: { tables: 0, choice: 'hold' } }) }"),
-  ('07-build-booking', "{ const g = __shot.find('invest', 2, S => S.events.p1.type === 'noshow'); __shot.load(g, 'p1', { form: { tables: 1, choice: 'hold', offer: true } }) }"),
-  ('08-morning-shady-unanswered', "{ const g = __shot.find('invest', 2, S => S.events.p1.type === 'shady'); __shot.load(g, 'p1', { form: { tables: 0, choice: null } }) }"),
-  ('09-build-robbed', "{ const g = __shot.find('invest', null, S => S.round > 1 && S.morning.p1 && S.morning.p1.robbed > 0 && S.events.p1.type === 'quiet'); if (g) __shot.load(g, 'p1', { form: { tables: 0, choice: null } }) }"),
+  ('06-build-day1', "__shot.load(__shot.playTo('shot0', 'invest', 1), 'p1', { form: { staff: [1, 4], choice: null, gift: true, offer: true } })"),
+  ('07-build-day2', "__shot.load(__shot.playTo('shot0', 'invest', 2), 'p1', { form: { staff: [0, 5], choice: null, offer: true } })"),
+  ('08-morning-shady-unanswered', "{ const g = __shot.find('invest', 2, S => S.events.p1.type === 'shady'); __shot.load(g, 'p1', { form: { staff: [0, 2, 5], choice: null } }) }"),
+  ('09-build-robbed', "{ const g = __shot.find('invest', null, S => S.round > 1 && S.morning.p1 && S.morning.p1.robbed > 0 && S.events.p1.type === 'quiet'); if (g) __shot.load(g, 'p1', { form: { staff: [0, 2, 5], choice: null } }) }"),
   ('10a-market-briefing', "{ const g = __shot.playTo('shot0', 'market', 2); __shot.load(g, 'p1', { market: { owner: {}, elapsed: null } }) }"),
   ('10b-market-waiting-rival', "{ const g = __shot.playTo('shot0', 'market', 2); __shot.load(g, 'p1', { market: { owner: {}, elapsed: null, ready: { p1: Date.now() - 8000 } } }) }"),
   ('10-market', "{ const g = __shot.playTo('shot0', 'market', 2); __shot.load(g, 'p1', { market: { owner: { 0: 'p1', 1: 'p2', 2: 'p2', 4: 'p1', 5: 'p2' }, elapsed: 24, cooling: 4 } }) }"),
   ('11-market-last-day', "{ const g = __shot.find('market', 5, S => true, { loc: { p1: 'country', p2: 'country' }, rush: true }); __shot.load(g, 'p1', { market: { owner: { 0: 'p2' }, elapsed: 5 } }) }"),
-  ('12-ads', "{ const g = __shot.playTo('shot0', 'commit', 2); const sh = g.S.shops.p1; __shot.load(g, 'p1', { form: { sel: [sh.self[0], sh.rival[0]] } }) }"),
-  ('13a-cards-flip', "{ const g = __shot.playTo('shot0', 'service', 2); __shot.load(g, 'p1', { svc: { started: false, idx: 0, closed: 0, flip: 1 } }) }"),
-  ('13-service-ready', "{ const g = __shot.playTo('shot0', 'service', 2); __shot.load(g, 'p1', { svc: { started: false, idx: 0, closed: 0, flip: 99 } }) }"),
-  ('13b-service-running', "{ const g = __shot.playTo('shot0', 'service', 2); __shot.load(g, 'p1', { svc: { idx: 2, closed: 0, flip: 99 } }) }"),
-  ('14-service-shortage', "{ const g = __shot.find('service', 2, S => { const v = serviceRun(S, 'p1', [], 0); return v.pending && v.pending.kind === 'short'; }, { tables: 0, food: 2, loc: { p1: 'city', p2: 'city' } }); const v = serviceRun(g.S, 'p1', [], 0); __shot.load(g, 'p1', { svc: { idx: v.out.length, closed: 0 } }) }"),
-  ('15-service-food-request', "{ const g = __shot.find('service', null, S => { for (let c = 0; c < 8; c++) { const v = serviceRun(S, 'p1', [], c); if (v.pending && v.pending.kind === 'food') return true; if (!v.pending) return false; } return false; }); let c = 0, v; for (; c < 8; c++) { v = serviceRun(g.S, 'p1', [], c); if (v.pending && v.pending.kind === 'food') break; } __shot.load(g, 'p1', { svc: { idx: v.out.length, closed: c } }) }"),
-  ('16a-closing-day1-waste', "{ const g = __shot.playTo('shot0', 'service', 1, { noAds: true }); const v = serviceRun(g.S, 'p1', []); __shot.load(g, 'p1', { svc: { idx: v.out.length, closed: 99 } }) }"),
-  ('16-service-closing', "{ const g = __shot.playTo('shot0', 'service', 3, { rush: true }); const v = serviceRun(g.S, 'p1', []); __shot.load(g, 'p1', { svc: { idx: v.out.length, closed: 99 } }) }"),
+  ('12-ads', "{ const g = __shot.playTo('shot0', 'commit', 3); const sh = g.S.shops.p1; __shot.load(g, 'p1', { form: { sel: [sh.self[0], sh.rival[0]] } }) }"),
+  ('13a-cards-flip', "{ const g = __shot.playTo('shot0', 'service', 3); __shot.load(g, 'p1', { svc: { started: false, flip: 1 } }) }"),
+  ('13-cards-done', "{ const g = __shot.playTo('shot0', 'service', 3); __shot.load(g, 'p1', { svc: { started: false, flip: 99 } }) }"),
+  ('13b-service-day1-start', "__shot.load(__shot.playTo('shot0', 'service', 1), 'p1', { svc: {} })"),
+  ('13c-service-day3-start', "__shot.load(__shot.playTo('shot0', 'service', 3), 'p1', { svc: {} })"),
+  ('13d-service-running', "{ __shot.load(__shot.playTo('shot0', 'service', 4), 'p1', { svc: {}, fast: 6 }); setTimeout(() => { const b = document.querySelector('.rrsvc [data-ov=open]'); if (b) b.click(); }, 50) }", 4000),
+  ('16-service-closed-waiting', "{ const g = __shot.playTo('shot0', 'service', 2); g.logs.p1.push({ k: '2:service', res: autoService(g.S, 'p1') }); __shot.load(g, 'p1') }"),
   ('17-vouchers', "{ const g = __shot.find('voucher', null, S => !!S.waiting.p1); __shot.load(g, 'p1', { form: { n: 1 } }) }"),
   ('17b-vouchers-three', "{ const g = __shot.find('voucher', null, S => !!S.waiting.p1 && S.service.p1.turned >= 3); if (g) __shot.load(g, 'p1', { form: { n: 2 } }) }"),
   ('18-recap', "__shot.load(__shot.playTo('shot0', 'report', 3, { rush: true }))"),
   ('19-final', "__shot.load(__shot.find('over', null, S => S.result.reason === 'done', { loc: { p1: 'country', p2: 'country' }, rush: true }))"),
-  ('20-final-closed', "{ const g = __shot.find('over', null, S => S.result.reason === 'bankrupt', { tables: 3, food: 6 }); if (g) __shot.load(g, 'p1') }"),
+  ('20-final-closed', "{ const g = __shot.find('over', null, S => S.result.reason === 'bankrupt', { food: 0, staff: [0, 1, 2, 3, 4, 5, 6, 7] }); if (g) __shot.load(g, 'p1') }"),
 ]
 
 async def main():
     os.makedirs(OUT, exist_ok=True)
     async with async_playwright() as p:
-        b = await p.chromium.launch()
+        b = await p.chromium.launch(**({'executable_path': os.environ['RR_CHROMIUM']} if os.environ.get('RR_CHROMIUM') else {}))
         errs = []
         for theme in ['light', 'dark']:
             pg = await b.new_page(viewport={'width': 1440, 'height': 900})
@@ -139,9 +135,9 @@ async def main():
             await pg.add_init_script(f"localStorage.setItem('rr:theme', '{theme}')")
             await pg.goto(URL); await pg.wait_for_function('window.__rr && document.querySelector("#bar .tools")')
             await pg.evaluate(HELPERS); await pg.wait_for_timeout(400)  # fonts
-            for name, js in SCREENS:
+            for name, js, *wait in SCREENS:
                 try:
-                    await pg.evaluate(js); await pg.wait_for_timeout(450 if 'how-to' in name else 120)  # let the drawer finish sliding in
+                    await pg.evaluate(js); await pg.wait_for_timeout(wait[0] if wait else 450 if 'how-to' in name else 250)  # let the drawer finish sliding in
                     await pg.screenshot(path=f'{OUT}/{name}-{theme}.png', full_page=True)
                 except Exception as e:
                     errs.append(f'{theme} {name}: {e}')

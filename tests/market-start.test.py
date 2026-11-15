@@ -25,7 +25,7 @@ async def to_market(browser, errs):
     pages = []
     for uid, nick in [('u1', 'Alex'), ('u2', 'Max')]:
         pg = await ctx.new_page()
-        await pg.add_init_script(f"window.__RR_UID='{uid}';" + FAKE)
+        await pg.add_init_script(f"window.__RR_UID='{uid}';window.__RR_SVC_AUTO=1;window.__RR_SVC_FAST=20;" + FAKE)
         pg.on('pageerror', lambda e: errs.append(str(e)))
         await pg.goto(URL); await pg.wait_for_timeout(400)
         await pg.fill('#nick-in', nick); pages.append(pg)
@@ -35,15 +35,22 @@ async def to_market(browser, errs):
     for pg in pages:
         await pg.click('[data-act=introskip]'); await pg.locator('[data-act=picksel]').first.click(); await pg.locator('[data-act=pick]').first.click()
     await A.wait_for_timeout(500)
-    for pg in pages:
-        if await pg.locator('[data-act=choose]').count(): await pg.locator('[data-act=choose]').first.click()
-        await pg.click('[data-act=invest]')
+    # Day 1 has no Market: play through it (the service plays itself here) up to day 2's Market briefing
+    for i in range(200):
+        if all([await pg.evaluate('__rr.S && __rr.S.phase') == 'market' for pg in pages]): break
+        for pg in pages:
+            for sel in ['[data-act=stage]:not([data-v=offer-back])', '[data-act=choose]', '[data-act=invest]', '[data-act=voucher]', '[data-act=next]']:
+                if await pg.locator(sel).count():
+                    try: await pg.locator(sel).first.click(timeout=1000)
+                    except Exception: pass
+                    break
+        await A.wait_for_timeout(150)
     await A.wait_for_timeout(800)
     return ctx, A, B
 
 async def main():
     async with async_playwright() as p:
-        b = await p.chromium.launch(); errs = []
+        b = await p.chromium.launch(**({'executable_path': os.environ['RR_CHROMIUM']} if os.environ.get('RR_CHROMIUM') else {})); errs = []
 
         print('-- both players press Start')
         ctx, A, B = await to_market(b, errs)

@@ -5,7 +5,12 @@ function bot(S, seat, rnd, priv) {
   switch (S.phase) {
     case 'pick': return { k, loc: rnd() < 0.5 ? 'city' : 'country' };
     case 'morning': return { k };
-    case 'invest': return { k, tables: Math.floor(rnd() * 3), choice: rnd() < .5 ? (rnd() < .5 ? 'accept' : 'hold') : 'decline', loan: rnd() < 0.1 };
+    case 'invest': {
+      // Keep, hire or let go some bunnies (sometimes junk section numbers)
+      const n = E.sectionsOf(S.players[seat]), staff = S.players[seat].staff.filter(() => rnd() < 0.8);
+      for (let i = 0; i < 3; i++) if (rnd() < 0.5) staff.push(Math.floor(rnd() * (n + 2)) - 1);
+      return { k, staff, choice: rnd() < .5 ? 'accept' : 'decline', loan: rnd() < 0.1 };
+    }
     case 'market': {
       // Random items; sometimes both bots claim the same one (the engine must sort it out)
       const buys = [];
@@ -19,16 +24,13 @@ function bot(S, seat, rnd, priv) {
     }
     case 'reveal': return { k, ...(rnd() < 0.03 ? { ...priv[seat], self: ['flyer'] } : priv[seat]) };
     case 'service': {
-      // Play the service like the page does: close each shortage after a few random actions
-      const ops = []; let closed = 0;
-      for (let guard = 0; guard < 50; guard++) {
-        const v = E.serviceRun(S, seat, ops, closed);
-        if (!v.pending) break;
-        if (v.pending.kind === 'food') { ops.push({ a: 'food', give: rnd() < 0.5 }); continue; }
-        if (v.pending.can >= v.pending.need || v.pending.tries >= v.pending.maxOps || rnd() < 0.3) { closed++; continue; }
-        ops.push({ ep: v.pending.ep, a: rnd() < 0.5 ? 'rush' : 'borrow' });
-      }
-      return { k, ops };
+      // A plausible night, sometimes with impossible numbers the engine must cut back
+      const res = E.autoService(S, seat);
+      if (rnd() < 0.3) res.rushN = Math.floor(rnd() * 5);
+      if (rnd() < 0.3) res.served += Math.floor(rnd() * 3);
+      if (rnd() < 0.05) Object.assign(res, { served: 999, earned: 1e6, unhappy: -4, rushN: 'x' });
+      if (S.script[seat].mid === 'food') res.food = rnd() < 0.5 ? 'give' : 'refuse';
+      return { k, res };
     }
     case 'voucher': return { k, n: Math.floor(rnd() * 3) };
     case 'report': return { k };
@@ -56,6 +58,8 @@ for (let g = 0; g < 2000; g++) {
     const p = S.players[s];
     if (p.stars < 1 || p.stars > 5) { console.log('stars', p); process.exit(1); }
     if (p.tables < 0 || p.pending < 0) { console.log('negative', p); process.exit(1); }
+    if (p.staff.some(i => i < 0 || i >= E.sectionsOf(p)) || new Set(p.staff).size !== p.staff.length) { console.log('bad staff', p.staff); process.exit(1); }
+    for (const h of p.history) if (h.served > h.demand) { console.log('served more than came', h); process.exit(1); }
     for (const h of p.history) { stats.turned += h.turned; stats.served += h.served; stats.days++; }
     for (const h of p.history) for (const l of h.ledger) if (l.label === 'Robbed overnight') stats.robbed++;
   }
@@ -65,16 +69,26 @@ console.log(wins, reasons, { avgServed: (stats.served / stats.days).toFixed(2), 
 // Market conflicts: two players claiming the same item must never both get it
 {
   const logs = { p1: [], p2: [] };
-  for (const s of ['p1', 'p2']) logs[s].push({ k: '0:pick', loc: 'country' }, { k: '1:invest', tables: 0 }, { k: '1:commit', h: E.adHash({ self: [], rival: [] }, 'x'), nSelf: 0, nRival: 0 },
-    { k: '1:reveal', self: [], rival: [], salt: 'x' }, { k: '1:service', ops: [] }, { k: '1:voucher', n: 0 }, { k: '1:next' }, { k: '2:morning' }, { k: '2:invest', tables: 0 }, { k: '2:market', buys: [0, 1, 2] });
+  for (const s of ['p1', 'p2']) logs[s].push({ k: '0:pick', loc: 'country' }, { k: '1:invest', staff: [] }, { k: '1:service', res: {} }, { k: '1:voucher', n: 0 }, { k: '1:next' }, { k: '2:morning' }, { k: '2:invest', staff: [] }, { k: '2:market', buys: [0, 1, 2] });
   const S = E.simulate('conflict', logs), b = S.market.bought;
   if (S.round !== 2) { console.log('market conflict: did not reach day 2', S.round, S.phase); process.exit(1); }
   if (b.p1.items.length !== 3 || b.p2.items.length !== 0) { console.log('market conflict wrong', b); process.exit(1); }
   console.log('market conflict OK');
   // Day 1: no Market, free food in the kitchen
-  const D = E.simulate('day1', { p1: [{ k: '0:pick', loc: 'city' }, { k: '1:invest', tables: 0 }], p2: [{ k: '0:pick', loc: 'country' }, { k: '1:invest', tables: 0 }] });
-  if (D.phase !== 'commit' || D.players.p1.ingr !== E.CFG.freeFood) { console.log('day 1 free food wrong', D.phase, D.players.p1.ingr); process.exit(1); }
-  console.log('day 1 free food OK');
+  const D = E.simulate('day1', { p1: [{ k: '0:pick', loc: 'city' }, { k: '1:invest', staff: [0, 1, 1, 99] }], p2: [{ k: '0:pick', loc: 'country' }, { k: '1:invest', staff: [] }] });
+  if (D.phase !== 'service' || D.players.p1.ingr !== E.CFG.freeFood) { console.log('day 1 free food wrong', D.phase, D.players.p1.ingr); process.exit(1); }
+  const L = E.CFG.loc.city, w = E.CFG.staff.wage.city;
+  if (D.players.p1.staff.join() !== '0,1' || D.players.p1.cash !== E.CFG.startCash - L.open - L.rent - 2 * w) { console.log('day 1 hiring wrong', D.players.p1.staff, D.players.p1.cash); process.exit(1); }
+  console.log('day 1 free food + hiring OK');
+  // Letting a bunny go costs severance; days 1-2 have no Ads step, day 3 does
+  const H = { p1: [{ k: '0:pick', loc: 'country' }, { k: '1:invest', staff: [0, 1, 2] }, { k: '1:service', res: {} }, { k: '1:voucher', n: 0 }, { k: '1:next' }, { k: '2:morning' }, { k: '2:invest', staff: [2] }],
+    p2: [{ k: '0:pick', loc: 'country' }, { k: '1:invest', staff: [] }, { k: '1:service', res: {} }, { k: '1:voucher', n: 0 }, { k: '1:next' }, { k: '2:morning' }, { k: '2:invest', staff: [] }] };
+  const S2 = E.simulate('fire', H), led = S2.players.p1.ledger;
+  if (!led.some(l => l.label === 'Severance ×2' && l.amt === -2 * E.CFG.staff.fire) || !led.some(l => l.label === 'Wages ×1')) { console.log('severance wrong', led); process.exit(1); }
+  for (const s of ['p1', 'p2']) H[s].push({ k: '2:market', buys: [] }, { k: '2:service', res: {} }, { k: '2:voucher', n: 0 }, { k: '2:next' }, { k: '3:morning' }, { k: '3:invest', staff: S2.players[s].staff }, { k: '3:market', buys: [] });
+  const S3 = E.simulate('fire', H);
+  if (S2.phase !== 'market' || S3.round !== 3 || S3.phase !== 'commit') { console.log('ads day wrong', S2.phase, S3.round, S3.phase); process.exit(1); }
+  console.log('severance + ads from day 3 OK');
 }
 // Determinism and money checks: the same logs must always give the same result, and cash has at most 2 decimals.
 {
@@ -94,11 +108,11 @@ console.log(wins, reasons, { avgServed: (stats.served / stats.days).toFixed(2), 
     const k = S.waiting[s];
     switch (S.phase) {
       case 'pick': return { k, loc: 'country' };
-      case 'invest': return { k, tables: 0, choice: S.events[s].type === 'shady' ? 'accept' : 'decline' };
+      case 'invest': return { k, staff: [], choice: S.events[s].type === 'shady' ? 'accept' : 'decline' };
       case 'market': return { k, buys: s === 'p1' ? [0, 2, 4] : [1, 3, 5] };
       case 'commit': return { k, h: E.adHash({ self: [], rival: [] }, 'x'), nSelf: 0, nRival: 0 };
       case 'reveal': return { k, self: [], rival: [], salt: 'x' };
-      case 'service': return { k, ops: [] };
+      case 'service': return { k, res: E.autoService(S, s) };
       case 'voucher': return { k, n: 0 };
       default: return { k };
     }
