@@ -868,3 +868,6 @@ body{transition:background-color .35s ease}
 .hover2 .payper{font:600 15px var(--body);color:#7A5A40;margin-top:6px}
 .hover2 .payeg{display:flex;gap:8px;align-items:center;background:#F6EDE1;border-radius:12px;padding:9px 12px;font:600 14px var(--body)}
 .hover2 .payeg span{color:#7A5A40} .hover2 .payeg b{font-weight:800}
+.tbtns{display:flex;align-items:center;gap:14px}
+.tback{appearance:none;border:0;background:none;padding:6px 4px;color:#9A8B7E;font:600 14px var(--body);cursor:pointer}
+.tback:hover{color:#5C4A3C;text-decoration:underline}
