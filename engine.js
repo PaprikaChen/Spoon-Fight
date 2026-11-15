@@ -60,6 +60,9 @@ const CFG = {
   voucher: 3,
   // Loans (off for now): set enabled to true to bring back the Build-phase loan and the automatic loan when rent can't be paid
   loan: { enabled: false, amount: 30, repay: 40 },
+  // Each step the two players do on their own (pick, ads, staff, vouchers, recap) has a timer; when it runs out the page
+  // goes on with the player's current choices. Page-only (the engine never reads the clock). TBD.
+  stageSeconds: 180,
   starValue: 20, shady: { cash: 15, fine: 20 }
 };
 const round2 = x => Math.round(x * 100) / 100;

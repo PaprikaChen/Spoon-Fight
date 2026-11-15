@@ -17,7 +17,7 @@ const app = {
   nick: (lsGet('nick') || '').slice(0, 12), S: null, form: {}, priv: {}, revealing: {}, unsub: [], chain: Promise.resolve(),
   err: '', busy: false, loadNote: '', intro: 0,
   mkt: null, mktUnsub: null, cool: {}, claiming: {}, svc: {}, ticker: null,
-  howto: null, cover: null, acked: {}, mornSeen: {}, endStep: {},
+  howto: null, cover: null, acked: {}, mornSeen: {}, endStep: {}, stageT0: {}, autoDone: {},
   invite: null, resume: null, showJoin: false
 };
 
@@ -274,7 +274,7 @@ const PRIVATE_PHASES = ['pick', 'invest', 'commit'];
 
 // ---------- live clock: market and service run in real time ----------
 function setTicker() {
-  const live = app.S && app.S.phase === 'market';
+  const live = app.S && (app.S.phase === 'market' || controlled().some(s => stageDeadline(s)));
   if (live && !app.ticker) app.ticker = setInterval(tick, 200);
   if (!live && app.ticker) { clearInterval(app.ticker); app.ticker = null; }
 }
@@ -282,6 +282,7 @@ function setTicker() {
 function tick() {
   const S = app.S; if (!S) return;
   if (S.phase === 'market') marketTick();
+  if (stageTick()) return;
   if (!app.S || app.S.phase !== 'market') return;
   const sig = liveSig();
   if (sig !== app.sig) render(); else updateBars();
@@ -301,6 +302,7 @@ function updateBars() {
     if (el.firstElementChild) el.firstElementChild.style.width = f * 100 + '%';
   });
   document.querySelectorAll('[data-count]').forEach(el => { el.textContent = Math.max(0, Math.ceil((+el.dataset.count - now) / 1000)) + 's'; });
+  document.querySelectorAll('[data-clock]').forEach(el => { const left = Math.max(0, Math.ceil((+el.dataset.clock - now) / 1000)); el.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`; el.parentElement.classList.toggle('hot', left <= 30); });
 }
 const tbar = (t0, t1, drain) => `<span class="pbar" data-t0="${t0}" data-t1="${t1}" ${drain ? 'data-drain="1"' : ''}><i></i></span>`;
 
@@ -390,6 +392,46 @@ function marketTick() {
 }
 
 // ---------- service: play the day back, pausing for shortages and choices ----------
+// ---------- step timer: pick, ads, staff, vouchers and recap each get CFG.stageSeconds ----------
+const TIMED = ['pick', 'commit', 'invest', 'voucher', 'report'];
+// The clock starts when the step starts: the newest action in either log (the one that ended the step before).
+// Picking starts when this player reaches the pick screen (the story before it isn't timed).
+function stageDeadline(s) {
+  const S = app.S;
+  if (!S || !S.waiting[s] || !TIMED.includes(S.phase) || !CFG.stageSeconds) return null;
+  if (app.mode === 'local' && s !== app.view) return null;   // one screen: only the player holding it is on the clock
+  if (S.phase === 'pick') {
+    if (app.intro < INTRO_ALL()) return null;
+    const key = `${app.code}:pick:${s}`; app.stageT0[key] = app.stageT0[key] || Date.now(); return app.stageT0[key] + CFG.stageSeconds * 1000;
+  }
+  let t0 = 0;
+  for (const w of ['p1', 'p2']) for (const a of app.logs[w]) if (a && a.t > t0) t0 = a.t;
+  return (t0 || Date.now()) + CFG.stageSeconds * 1000;
+}
+// Time's up: go on with whatever the player has chosen so far (safe defaults otherwise)
+function autoSubmit(s) {
+  const S = app.S, k = S.waiting[s], p = S.players[s], f = app.form[s + '|' + k] || {};
+  if (!k || app.autoDone[s + k]) return; app.autoDone[s + k] = true;
+  toast("Time's up! We went on with your choices so far.");
+  switch (S.phase) {
+    case 'pick': return act(s, { k, loc: f.loc || 'country' });
+    case 'commit': { const sel = f.sel || [], A = CFG.ads; return commitCards(s, k, { self: sel.filter(id => A[id].side === 'self'), rival: sel.filter(id => A[id].side === 'rival') }); }
+    case 'invest': return act(s, { k, staff: f.staff || p.staff.slice(), choice: f.choice || null, loan: false });
+    case 'voucher': return act(s, { k, n: f.n || 0 });
+    case 'report': return act(s, { k });
+  }
+}
+// Called by the ticker: run out the clock, keep the countdown moving. True when it handled the tick.
+function stageTick() {
+  const now = Date.now(); let any = false;
+  for (const s of controlled()) { const d = stageDeadline(s); if (d === null) continue; any = true; if (now >= d) { autoSubmit(s); return true; } }
+  if (any && app.S.phase !== 'market') { updateBars(); return true; }
+  return false;
+}
+const timerPill = s => { const d = stageDeadline(s); if (d === null) return '';
+  const left = Math.max(0, Math.ceil((d - Date.now()) / 1000));
+  return `<div class="steptimer ${left <= 30 ? 'hot' : ''}" role="timer" aria-label="Time left for this step">⏱ <b data-clock="${d}">${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}</b><span>left for this step</span></div>`; };
+
 // ---------- form state ----------
 function F(defaults) {
   const s = viewer(), k = app.S.waiting[s] || 'none', key = s + '|' + k;
@@ -400,7 +442,7 @@ function F(defaults) {
 // =====================================================================
 // Rendering (UI v3). Every screen is built from plain words: what happened to you, and why.
 // =====================================================================
-const V = 'v29';
+const V = 'v31';
 const IMG = { art: `assets/key-art.jpg?v=${V}`, country: `assets/countryside.jpg?v=${V}`, city: `assets/city.jpg?v=${V}` };
 const STEPS = [['commit', 'Ads'], ['invest', 'Staff'], ['market', 'Market'], ['service', 'Service'], ['report', 'Recap']];
 // Day 1 has no Market (free food instead), and ads start on day CFG.adsFrom (then they are the first step), so early days have fewer steps
@@ -446,6 +488,7 @@ function render() {
   else root.innerHTML = gameHTML();
   $('#modal').innerHTML = app.howto ? howtoHTML() : '';
   app.sig = app.S && app.S.phase === 'market' ? liveSig() : '';
+  setTicker();   // the step timer can start from a page click (e.g. reaching the pick screen)
   updateBars();
   mountService();
 }
@@ -637,7 +680,7 @@ function gameHTML() {
   if (inRoom()) return roomHTML();
   // One-screen practice: say whose turn it is (the old "Playing as P1" bar)
   const playing = app.mode === 'local' && S.phase !== 'over' ? `<div class="strip soft"><span class="dot round ${s === 'p1' ? 'you' : 'rival'}"></span><span><b>Playing as ${esc(nameOf(s))}</b> · switch players with the buttons at the top. Look away when it's not your turn.</span></div>` : '';
-  return playing + phaseHTML(s);
+  return playing + timerPill(s) + phaseHTML(s);
 }
 function phaseHTML(s) {
   const S = app.S;
