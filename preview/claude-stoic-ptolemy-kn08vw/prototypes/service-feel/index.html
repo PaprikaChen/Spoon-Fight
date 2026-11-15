@@ -276,7 +276,11 @@ function buildStatic(hired, mode) {
   let b = '';
   if (mode === 'build') {
     sections.forEach(sc => { if (sc.on) b += `<g transform="translate(${sc.home.x} ${sc.home.y})" pointer-events="none">${staffDraw(true, false)}</g>`; });
-    b += `<g pointer-events="none" transform="translate(${STOVE.x} ${STOVE.y}) scale(1.25)">${meDraw(false)}</g><rect x="${KX}" y="${RY}" width="${KR - KX}" height="${RH}" fill="rgba(43,36,32,.45)" pointer-events="none"/>`;
+    b += `<g pointer-events="none" transform="translate(${STOVE.x} ${STOVE.y}) scale(1.25)">${meDraw(false)}</g>`;
+    const nx = KX + 18, ny = RY + 44, nw = KR - KX - 36;
+    b += `<g pointer-events="none"><rect x="${nx}" y="${ny}" width="${nw}" height="104" rx="12" fill="#FFF7EC" stroke="${OUT}" stroke-width="1.8"/>`
+      + ['You cook in the kitchen.', "When the bunnies can't keep up,", 'you seat and serve guests too.']
+        .map((t, i) => `<text x="${nx + nw / 2}" y="${ny + 30 + i * 26}" text-anchor="middle" font-size="${i ? 14 : 16}" font-weight="900" fill="${OUT}" font-family="Nunito,sans-serif">${t}</text>`).join('') + '</g>';
     sections.forEach(sc => { b += `<rect class="sec-hit" data-click="s${sc.i}" x="${sc.x}" y="${sc.y}" width="${sc.w}" height="${sc.h}" rx="16" fill="transparent"/>`; });
   }
   svg.innerHTML = g + k + `<g id="L-plates"></g><g id="L-bus"></g>` + chairs + `<g id="L-seated"></g>` + tops + `<g id="L-tplates"></g><g id="L-build">${b}</g><g id="L-walk"></g><g id="L-over"></g><g id="L-ui"></g>`;
@@ -336,19 +340,13 @@ function drawBuild() {
   buildStatic(S.hired, 'build');
   const n = S.hired.size, T = sections.length * 2, w = wage(), after = S.cash - n * w, f = forecast();
   const box = document.getElementById('build'); box.hidden = false;
-  box.style.left = (KX / W * 100 + 0.8) + '%'; box.style.top = (RY / H * 100 + 1.5) + '%';
-  box.style.width = ((KR - KX) / W * 100 - 1.6) + '%'; box.style.height = (RH / H * 100 - 3) + '%';
-  const kept = DAY === 1 ? '' : `<div class="me">Bunnies from yesterday stay. Click a rug to let one go.</div>`;
+  const top = SY + 138; box.style.left = (KX / W * 100 + 0.8) + '%'; box.style.top = (top / H * 100) + '%';
+  box.style.width = ((KR - KX) / W * 100 - 1.6) + '%'; box.style.height = ((RY + RH - top) / H * 100 - 1.5) + '%';
   const warn = DAY !== 1 && after < P.foodWarn ? `<div class="warn">Only $${after} left for food at the market.</div>` : '';
-  box.innerHTML = `<h3>Hire staff</h3>
-    <div class="row2"><span>Cash</span><span class="big">$${S.cash}</span></div>
-    <div class="row2"><span>Wage</span><b>$${w} per bunny a day</b></div>
-    <div class="row2"><span>Bunnies</span><b>${n}</b></div>
-    <div class="row2"><span>Tables covered</span><b>${2 * n} of ${T}</b></div>
-    <div class="row2"><span>Expect about</span><b>${f.guests} guests</b></div>${f.note ? `<div class="me">${f.note}</div>` : ''}
-    <div class="row2"><span>Wages today</span><b>−$${n * w}</b></div>
-    <div class="row2"><span>Cash after wages</span><b>$${after}</b></div>${warn}${kept}
-    <div class="me">You cook in the kitchen. When the bunnies can't keep up, you seat and serve guests too.</div>
+  box.innerHTML = `<div class="row2"><h3>Hire staff</h3><span class="big">$${S.cash}</span></div>
+    <div class="row2"><span>$${w} per bunny a day</span><b>−$${n * w}</b></div>
+    <div class="row2"><span>Expect about</span><b>${f.guests} guests</b></div>
+    <div class="row2"><span>Left after wages</span><b>$${after}</b></div>${warn}
     <button class="btn" id="openSvc">Open for service</button>`;
   box.querySelector('#openSvc').onclick = startService;
 }
