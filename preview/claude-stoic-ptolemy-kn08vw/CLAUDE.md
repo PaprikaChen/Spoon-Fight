@@ -50,6 +50,8 @@ A two-player web game that teaches restaurant management to players aged 13+. It
 
 17. **Step timer**: pick, Ads, Staff, vouchers and Recap each have `CFG.stageSeconds` (180). The clock starts at the newest action in either log (pick: when this player reaches the pick screen; one-screen practice: only the player holding the screen). When it runs out, `autoSubmit()` goes on with the player's current choices (pick defaults to the Countryside). Page-only: `stageDeadline()`, `stageTick()`, `timerPill()`.
 
+18. **One screen per step, no scrolling**: `.wrap` is exactly the window height and `#app` is a size container, so pictures and type scale with its height (`cqh` units, end of `style.css`); the restaurant drawing on Staff and Service is sized to the height left (1352 × 600). Checked at 1440×900 and 1366×768; the Recap's day-by-day table now lives only on the final results page. When adding content to a step, check it still fits.
+
 ## Firestore data
 
 ```

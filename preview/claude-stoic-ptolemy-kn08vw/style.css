@@ -967,3 +967,84 @@ body{transition:background-color .35s ease}
 .steptimer{justify-self:end;display:inline-flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
 .steptimer b{font-size:16px;color:var(--ink)}
 .steptimer.hot{border-color:#E8392B;background:#FFECEB;color:#9B1C12}.steptimer.hot b{color:#B3261E}
+
+/* ===== One screen per step: the game area is exactly the window height, nothing scrolls =====
+   #app is a size container, so pictures can scale with its height (cqh units). */
+.wrap{height:100dvh;box-sizing:border-box;padding:10px 24px 12px;grid-template-rows:auto minmax(0,1fr);gap:10px}
+.bar{padding-bottom:8px}
+#app{container-type:size;display:flex!important;flex-direction:column;gap:10px!important;min-height:0;overflow:auto}
+#app>*{flex:none}
+#app>.strip.soft{padding:5px 14px;font-size:13px}
+#app>.steptimer{margin-bottom:-4px}
+#app>.story,#app>.ending,#app>.gift2,#app>.solo2,#app>.vpage,#app>.adsflow,#app>.hire2,#app>.svc2{flex:1 1 auto;min-height:0}
+/* story, goal and ending pages */
+.story{min-height:0;grid-template-rows:auto minmax(0,1fr) auto;gap:8px;padding:12px 24px 16px}
+.story .smid{gap:clamp(8px,2.5cqh,34px);min-height:0}
+.storyart{width:auto;max-width:100%;height:clamp(160px,50cqh,400px)}
+.storyart.goalart{height:clamp(150px,44cqh,400px)}
+.story .cap{font-size:clamp(24px,5.2cqh,46px)}
+.story.goal .smid{gap:clamp(6px,1.6cqh,18px)}.story .gsub{font-size:clamp(14px,2.3cqh,19px)}.goalchip{font-size:clamp(18px,3cqh,26px)}
+.story .cta{min-height:48px}
+.ending{min-height:0;padding:16px 20px}.ein{gap:clamp(8px,1.8cqh,18px)}
+.efun{font-size:clamp(30px,6.5cqh,54px)}.efun.sm{font-size:clamp(26px,5.3cqh,44px)}.efun.big{font-size:clamp(34px,7.5cqh,64px)}.espoon{font-size:clamp(38px,8cqh,70px)}
+.ending .moon{width:clamp(48px,10cqh,90px);height:auto}.eav{width:clamp(80px,17cqh,150px);height:clamp(80px,17cqh,150px)}
+.ebadge svg{width:clamp(100px,22cqh,190px);height:auto}.epic{width:auto;max-width:100%;height:clamp(180px,46cqh,380px)}
+.ecrop{width:clamp(120px,26cqh,210px);height:clamp(120px,26cqh,210px)}.ecrop.sm2{width:clamp(100px,20cqh,170px);height:clamp(100px,20cqh,170px)}
+.etally .ebal{padding:clamp(12px,2.4cqh,22px) 22px;gap:clamp(6px,1.4cqh,12px)}.etot b{font-size:clamp(30px,6cqh,46px)}
+/* day 1 gift, offer card, vouchers */
+.gift2{min-height:0;gap:clamp(8px,2cqh,26px);padding:0}.giftart{width:auto;max-width:100%;height:clamp(160px,46cqh,475px)}
+.gtext .funt{font-size:clamp(28px,5.5cqh,50px)}
+.solo2,.vpage{min-height:0}
+/* pick */
+.pick-title h1{font-size:clamp(26px,4.6cqh,40px)}
+.pickc .pic .placeart{height:clamp(110px,28cqh,250px)}
+.pickc .in{gap:clamp(8px,1.6cqh,18px);padding:clamp(12px,2cqh,22px) 26px}
+.pickc .st{padding:clamp(8px,1.4cqh,14px)}.pickc .st b{font-size:clamp(22px,3.6cqh,30px)}
+/* staff and service: the restaurant drawing (1352 × 600) scales to the height that's left */
+.hire2,.svc2{container-type:size;display:flex;flex-direction:column;gap:6px}
+.hire2 .hhead .funt{font-size:30px;line-height:1.1}
+.hstage{flex:none;width:min(100cqw,calc((100cqh - 46px) * 2.2533));align-self:center}
+.svc2 .rrsvc{gap:6px;justify-items:center}
+.svc2 .rrsvc-hud{width:min(100cqw,calc((100cqh - 96px) * 2.2533))}
+.rrsvc-stage{width:min(100cqw,calc((100cqh - 96px) * 2.2533))}
+.svc2 .rrsvc-hud .rp,.svc2 .rrsvc-hud .rclock{padding-top:5px;padding-bottom:5px}
+.svchelp{gap:0;font-size:12px;line-height:1.35;text-align:center}
+/* ads pages and today's ads */
+.adsc{gap:clamp(8px,1.6cqh,16px);padding:clamp(14px,2.6cqh,28px) 32px}
+.adhand .acard{width:clamp(150px,27cqh,200px)}
+.sumads{grid-template-columns:1fr 1fr;width:min(1100px,100%)}.sumads>h1,.sumads>.cta{grid-column:1/-1}.sumads .sep{display:none}
+.sumads .adhand .acard{width:clamp(120px,22cqh,160px)}
+.adsc.morn{gap:clamp(6px,1.4cqh,14px)}.morn .sunrise{width:clamp(80px,14cqh,160px);height:auto}.adsc .funt.big{font-size:clamp(34px,7cqh,52px)}.cashday .v{font-size:clamp(34px,6.5cqh,54px)}
+.adsc .megaphone{width:clamp(110px,18cqh,200px);height:auto}
+/* step timer sits at the right, on its own short line */
+#app>.steptimer{align-self:flex-end}
+/* offer card (shady deal) */
+.offer2{padding:clamp(18px,3cqh,34px) 30px;gap:clamp(10px,1.8cqh,22px)}.offer2 .funt{font-size:clamp(26px,4.4cqh,38px)}.och{padding:clamp(12px,2cqh,22px) 20px}
+/* market: a little tighter */
+.shelf{gap:8px}.item{padding:10px 12px}
+/* vouchers: smaller faces, more per row */
+.vcard2{width:min(960px,100%);padding:clamp(18px,3cqh,36px) 30px;gap:clamp(8px,1.4cqh,16px)}.vcard2 .funt{font-size:clamp(26px,4.4cqh,38px)}
+.faces2{gap:10px;padding:2px 0}.face2{width:clamp(84px,12cqh,132px);height:clamp(80px,11.5cqh,134px);gap:4px;font-size:12px}.face2 .em{font-size:clamp(24px,4cqh,36px)}
+.vres2>div>div{padding:8px 6px}
+/* recap */
+.recap-top .hero{padding:clamp(14px,2.6cqh,28px) 26px;gap:clamp(8px,1.6cqh,18px)}
+.hero .money{gap:6px}.hero .money .gold{font-size:clamp(46px,8cqh,84px)}.hero .money .loss{font-size:clamp(38px,6.5cqh,64px)}
+.starbox{padding:10px 14px}
+.recap-top .race,.recap-bot .panel{padding:clamp(12px,2cqh,18px) 18px;gap:clamp(6px,1.2cqh,12px)}
+.lines>div{padding:3px 0}.lines .tot{padding-top:6px}
+.tile{padding:8px 10px}
+/* final results */
+.final-hero{min-height:0;height:clamp(150px,25cqh,360px)}
+.final-hero .in{padding:18px 26px}.final-hero .gold{font-size:clamp(40px,7cqh,76px)}.final-hero .plain{font-size:clamp(32px,5.5cqh,56px)}
+.final-mid>.panel{padding:clamp(12px,2cqh,22px) 20px!important;gap:8px}
+.chart{display:block;width:100%;height:clamp(100px,19cqh,250px)}
+.talk li{padding:8px 12px}
+.again{padding:clamp(12px,2.2cqh,22px) 22px;gap:8px}.again .cta,.again .ghost{min-height:0;padding-top:10px;padding-bottom:10px}
+/* short windows (small laptops): a little less air everywhere */
+@media (max-height:820px){
+  .wrap{padding:6px 20px 8px;gap:6px}.bar{padding-bottom:4px}#app{gap:6px!important}
+  .offer2 .fsub{font-size:14px}.offer2 .ochoices{gap:8px}.och{gap:4px;padding:10px 18px}.offer2{gap:10px}.offer2>.cta{min-height:48px}
+  .final-hero{height:clamp(136px,18cqh,360px)}.final-hero .in{padding:12px 22px}.score{padding:10px 16px;gap:2px}.score .n{font-size:32px}.daylog{padding:10px 18px}.chart{height:clamp(114px,21cqh,250px)}.talk ol{gap:6px}.talk li{padding:6px 10px;font-size:13px}.again span{font-size:13px}
+  .faces2{gap:8px}.vres2{gap:6px}
+  .brief{gap:10px}
+}
