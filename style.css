@@ -874,3 +874,6 @@ body{transition:background-color .35s ease}
 /* Staff plan: a section lights up a little under the pointer, so players see it can be clicked */
 .rrplan .sec-hit{transition:fill .12s}
 .rrplan .sec-hit:hover,.rrplan .sec-hit:focus-visible{fill:rgba(255,246,214,.18);stroke:#FFE08A;stroke-width:3}
+.kbubble{align-items:center;text-align:center;gap:6px}
+.kbubble b{font:800 16px var(--body)}
+.kbubble p{font-weight:700;font-size:14px}
