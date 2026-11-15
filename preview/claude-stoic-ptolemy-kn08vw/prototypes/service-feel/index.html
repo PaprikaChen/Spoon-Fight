@@ -339,6 +339,8 @@ function newDay() {
 function drawBuild() {
   buildStatic(S.hired, 'build');
   const n = S.hired.size, T = sections.length * 2, w = wage(), after = S.cash - n * w, f = forecast();
+  // fitted from test runs with the current tuning (no plates shortage, no help from you): about 5 guests per bunny
+  const sug = Math.min(sections.length, Math.ceil(f.guests / 5));
   const box = document.getElementById('build'); box.hidden = false;
   const top = SY + 138; box.style.left = (KX / W * 100 + 0.8) + '%'; box.style.top = (top / H * 100) + '%';
   box.style.width = ((KR - KX) / W * 100 - 1.6) + '%'; box.style.height = ((RY + RH - top) / H * 100 - 1.5) + '%';
@@ -346,6 +348,7 @@ function drawBuild() {
   box.innerHTML = `<div class="row2"><h3>Hire staff</h3><span class="big">$${S.cash}</span></div>
     <div class="row2"><span>$${w} per bunny a day</span><b>−$${n * w}</b></div>
     <div class="row2"><span>Expect about</span><b>${f.guests} guests</b></div>
+    <div class="row2"><span>Suggested without your help</span><b>${sug} bunnies</b></div>
     <div class="row2"><span>Left after wages</span><b>$${after}</b></div>${warn}
     <button class="btn" id="openSvc">Open for service</button>`;
   box.querySelector('#openSvc').onclick = startService;
