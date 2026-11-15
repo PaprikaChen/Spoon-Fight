@@ -877,3 +877,5 @@ body{transition:background-color .35s ease}
 .kbubble{align-items:center;text-align:center;gap:6px}
 .kbubble b{font:800 16px var(--body)}
 .kbubble p{font-weight:700;font-size:14px}
+.hpills{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.rivalcards{background:#FBE3EE;color:#9D174D}
