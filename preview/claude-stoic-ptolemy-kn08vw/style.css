@@ -963,3 +963,7 @@ body{transition:background-color .35s ease}
 .equote{position:relative;background:#FFF7EC;color:#3A2A1E;border-radius:20px;padding:18px 22px;font:600 18px/1.5 var(--body);max-width:480px;text-align:left}
 .equote small{display:block;margin-top:8px;font:800 13px var(--body);color:#9D174D}
 @media (max-width:700px){.etally,.etwo{grid-template-columns:1fr}.efun{font-size:36px}.efun.sm{font-size:30px}.efun.big{font-size:42px}.espoon{font-size:46px}.epair{gap:30px}.eav{width:110px;height:110px}}
+/* Step timer (pick, ads, staff, vouchers, recap) */
+.steptimer{justify-self:end;display:inline-flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.steptimer b{font-size:16px;color:var(--ink)}
+.steptimer.hot{border-color:#E8392B;background:#FFECEB;color:#9B1C12}.steptimer.hot b{color:#B3261E}

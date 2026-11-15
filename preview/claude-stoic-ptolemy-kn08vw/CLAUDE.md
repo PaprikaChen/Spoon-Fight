@@ -48,6 +48,8 @@ A two-player web game that teaches restaurant management to players aged 13+. It
 
 16. **Ending (after day 5)**: `endingHTML()` shows, per player (`app.endStep`): doors closed → the judges count (both), then you won → reward (winner) or you lost → consolation with the winner's fixed note `WINNER_NOTE` (loser), then the summary `finalHTML()`, which has a Share button (`shareSummary()`: a picture of the page made with `vendor/html2canvas-1.4.1.min.js`, shared or downloaded). Draws and bankruptcies skip the win/lose pages. Pictures: `assets/ending-cat-wins.webp`, `assets/ending-dog-wins.webp`.
 
+17. **Step timer**: pick, Ads, Staff, vouchers and Recap each have `CFG.stageSeconds` (180). The clock starts at the newest action in either log (pick: when this player reaches the pick screen; one-screen practice: only the player holding the screen). When it runs out, `autoSubmit()` goes on with the player's current choices (pick defaults to the Countryside). Page-only: `stageDeadline()`, `stageTick()`, `timerPill()`.
+
 ## Firestore data
 
 ```
