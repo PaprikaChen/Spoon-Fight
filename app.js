@@ -400,7 +400,7 @@ function F(defaults) {
 // =====================================================================
 // Rendering (UI v3). Every screen is built from plain words: what happened to you, and why.
 // =====================================================================
-const V = 'v13';
+const V = 'v14';
 const IMG = { art: `assets/key-art.jpg?v=${V}`, country: `assets/countryside.jpg?v=${V}`, city: `assets/city.jpg?v=${V}` };
 const STEPS = [['invest', 'Staff'], ['market', 'Market'], ['commit', 'Ads'], ['service', 'Service'], ['report', 'Recap']];
 // Day 1 has no Market (free food instead), and ads start on day CFG.adsFrom, so early days have fewer steps
@@ -780,7 +780,7 @@ function buildHTML(s) {
   const loan = !loanOn ? '' : `<button type="button" class="linkish" data-act="loan" data-v="${f.loan ? 0 : 1}">${f.loan ? `Loan taken: +$${CFG.loan.amount} (pay back $${CFG.loan.repay}). Undo` : `Take a $${CFG.loan.amount} loan (pay back $${CFG.loan.repay} at the end)`}</button>`;
   const sub = day1 ? `Click a section to hire a server. Each server looks after the ${CFG.staff.perSection} tables in their section.`
     : `Your staff from yesterday are still here. Click a section to hire, or click a bunny to let them go ($${CFG.staff.fire} to say goodbye).`;
-  const change = needChoice ? `<span class="hnote">${f.choice === 'accept' ? `You took the $${CFG.shady.cash}.` : 'You said no to the deal.'} <button class="linkish" data-act="stage" data-v="offer-back">Change</button></span>` : '';
+  const change = needChoice ? `<span class="hnote">${f.choice === 'accept' ? `You took the $${CFG.shady.cash}.` : 'You said no to the deal.'}</span>` : '';
   const card = `<b class="htitle">Hire staff</b>
     ${hrow(`$${w} per bunny a day`, n ? usd(-wages) : '$0')}${fired ? hrow(`Goodbye pay ×${fired}`, usd(-sev)) : ''}
     ${hrow('Expect about', plural(guess, 'guest'))}${hrow('Suggested without your help', plural(sug, 'bunny', 'bunnies'))}${hrow('Left after wages', usd(after), 'you')}${warn}${change}${loan}
@@ -1331,7 +1331,7 @@ document.addEventListener('click', e => {
     }
     case 'inc': { const f = F({}); f[b.dataset.f] = Math.max(0, (f[b.dataset.f] || 0) + Number(b.dataset.d)); return render(); }
     case 'choose': { const f = F({}); f.choice = b.dataset.c; return render(); }
-    case 'stage': { const f = F({}), v = b.dataset.v; if (v === 'gift') f.gift = true; else if (v === 'offer') f.offer = true; else if (v === 'offer-back') f.offer = false; return render(); }
+    case 'stage': { const f = F({}), v = b.dataset.v; if (v === 'gift') f.gift = true; else if (v === 'offer') f.offer = true; return render(); }
     case 'loan': { const f = F({}); f.loan = b.dataset.v === '1'; return render(); }
     case 'hiretipback': { const f = F({}); f.tip = Math.max(0, (f.tip || 0) - 1); return render(); }
     case 'hiretip': {
