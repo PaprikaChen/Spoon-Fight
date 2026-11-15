@@ -47,6 +47,35 @@ const table = (x, y, cloth = '#E8392B') => `<g transform="translate(${x} ${y})">
 const flower = (x, y, c) => `<g transform="translate(${x} ${y})"><path d="M0 0 v-16" stroke="#3E7D3A" stroke-width="3"/>${[0, 72, 144, 216, 288].map(a => `<ellipse cx="0" cy="-22" rx="4" ry="6" fill="${c}" transform="rotate(${a} 0 -16)"/>`).join('')}<circle cy="-16" r="3" fill="#FFD21F"/></g>`;
 const lamp = (x, y, h) => `<g transform="translate(${x} ${y})"><rect x="-4" y="${-h}" width="8" height="${h}" fill="#3A3A40" ${outl(3)}/><path d="M-14 ${-h - 30} h28 l-5 30 h-18z" fill="#FFE08A" ${outl(3)}/><path d="M-16 ${-h - 30} h32 l-8 -10 h-16z" fill="#3A3A40" ${outl(3)}/><circle cx="0" cy="${-h - 15}" r="26" fill="#FFE08A" opacity=".25"/></g>`;
 
+
+// the two chefs from the key art, front view: the grey cat (blue) and the cream dog (pink)
+function chef(x, y, kind, wave) {
+  const cat = kind === 'cat', fur = cat ? '#9C9AA3' : '#F6DDB0', col = cat ? '#2546F0' : '#D61F69', ear = cat ? '#F7A8C0' : '#E8A35C';
+  const ears = cat
+    ? `<path d="M-30 -8 l-10 -36 l28 14z" fill="${fur}" ${outl()}/><path d="M-30 -14 l-6 -22 l16 9z" fill="${ear}"/><path d="M30 -8 l10 -36 l-28 14z" fill="${fur}" ${outl()}/><path d="M30 -14 l6 -22 l-16 9z" fill="${ear}"/>`
+    : '';
+  const flop = cat ? '' : `<path d="M-24 -30 q-22 0 -20 30 q2 14 12 12 q6 -16 8 -36z" fill="${ear}" ${outl()}/><path d="M24 -30 q22 0 20 30 q-2 14 -12 12 q-6 -16 -8 -36z" fill="${ear}" ${outl()}/>`;
+  const face = cat
+    ? `<path d="M-15 -8 q6 -4 12 0 M3 -8 q6 -4 12 0" fill="none" stroke="${O}" stroke-width="3" stroke-linecap="round"/><path d="M-4 2 l4 3 l4 -3" fill="#F7A8C0" stroke="${O}" stroke-width="2"/><path d="M-8 9 q4 4 8 0 q4 4 8 0" fill="none" stroke="${O}" stroke-width="2.5" stroke-linecap="round"/><path d="M-30 2 h-12 M-30 8 h-11 M30 2 h12 M30 8 h11" stroke="${O}" stroke-width="2"/>`
+    : `<path d="M-15 -12 l10 4 M15 -12 l-10 4" stroke="${O}" stroke-width="3" stroke-linecap="round"/><circle cx="-9" cy="-4" r="3.6" fill="${O}"/><circle cx="9" cy="-4" r="3.6" fill="${O}"/><ellipse cx="0" cy="5" rx="5" ry="3.5" fill="${O}"/><path d="M-8 11 q8 12 16 0z" fill="#F06292" stroke="${O}" stroke-width="2.5" stroke-linejoin="round"/>`;
+  const arm = (side, up) => up
+    ? `<path d="M${side * 22} 22 q${side * 22} -8 ${side * 26} -34" fill="none" stroke="#FFFDF7" stroke-width="13" stroke-linecap="round"/><path d="M${side * 22} 22 q${side * 22} -8 ${side * 26} -34" fill="none" stroke="${O}" stroke-width="3" stroke-dasharray="0" opacity=".0"/><circle cx="${side * 48}" cy="-16" r="8" fill="${fur}" ${outl(3)}/>`
+    : `<path d="M${side * 22} 22 q${side * 8} 16 ${side * 4} 30" fill="none" stroke="#FFFDF7" stroke-width="13" stroke-linecap="round"/><circle cx="${side * 26}" cy="54" r="7.5" fill="${fur}" ${outl(3)}/>`;
+  const side = wave === 'left' ? -1 : 1;
+  return `<g transform="translate(${x} ${y})">
+    <ellipse cx="0" cy="72" rx="30" ry="6" fill="#000" opacity=".15"/>
+    ${cat ? `<path d="M22 56 q30 -6 26 -34 q-2 -10 6 -12" fill="none" stroke="${fur}" stroke-width="9" stroke-linecap="round"/><path d="M22 56 q30 -6 26 -34 q-2 -10 6 -12" fill="none" stroke="${O}" stroke-width="13" stroke-linecap="round" opacity="0"/>` : ''}
+    <path d="M-24 18 q-4 46 2 54 h44 q6 -8 2 -54 q-24 -10 -48 0z" fill="#FFFDF7" ${outl()}/>
+    <path d="M-16 30 h32 v40 h-32z" fill="${col}" ${outl(3)}/>
+    <path d="M-14 16 l14 12 l14 -12 l-6 -4 l-8 8 l-8 -8z" fill="${col}" ${outl(3)}/>
+    ${arm(side, true)}${arm(-side, false)}
+    ${flop}${ears}
+    <ellipse cx="0" cy="-6" rx="32" ry="26" fill="${fur}" ${outl()}/>
+    ${face}
+    <ellipse cx="-18" cy="6" rx="5" ry="3.2" fill="#F7A8C0" opacity=".8"/><ellipse cx="18" cy="6" rx="5" ry="3.2" fill="#F7A8C0" opacity=".8"/>
+    <g transform="translate(0 -32)"><rect x="-22" y="-6" width="44" height="14" fill="#FFFDF7" ${outl(3)}/><path d="M-22 -6 a14 14 0 0 1 4 -24 a18 18 0 0 1 36 0 a14 14 0 0 1 4 24z" fill="#FFFDF7" ${outl(3)}/></g>
+  </g>`;
+}
 // ================= COUNTRYSIDE =================
 {
   let s = '';
@@ -83,9 +112,9 @@ const lamp = (x, y, h) => `<g transform="translate(${x} ${y})"><rect x="-4" y="$
   s += [[505, 340, 26], [555, 345, 22], [495, 372, 30], [565, 378, 32], [620, 392, 24], [450, 392, 22]].map(([x, y, r]) => `<ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r * 0.42}" fill="#E8DCC4" ${outl(3)}/>`).join('');
   // tables, flowers, bunny, lamp
   s += table(230, 330) + table(820, 330);
-  s += lamp(392, 330, 70);
+  s += lamp(150, 330, 80);
   s += [[60, 380, '#F06292'], [95, 360, '#FFD21F'], [130, 385, '#BA68C8'], [700, 392, '#FF8A65'], [740, 372, '#F06292'], [960, 380, '#FFD21F'], [995, 395, '#BA68C8'], [320, 392, '#FFD21F'], [420, 386, '#F06292']].map(a => flower(...a)).join('');
-  s += bunny(610, 300, 1);
+  s += chef(440, 298, 'cat', 'left') + chef(612, 298, 'dog', 'right');
   document.getElementById('country').innerHTML = s;
 }
 
@@ -131,7 +160,7 @@ const lamp = (x, y, h) => `<g transform="translate(${x} ${y})"><rect x="-4" y="$
   s += table(150, 300, '#14B8A6') + table(800, 300, '#14B8A6');
   s += lamp(60, 330, 120) + lamp(990, 330, 120);
   s += `<g transform="translate(900 316)"><rect x="-22" y="-26" width="44" height="30" rx="4" fill="#20807A" ${outl(3)}/><circle cx="-10" cy="-34" r="12" fill="#3E9A5A" ${outl(3)}/><circle cx="10" cy="-36" r="14" fill="#4CAF6A" ${outl(3)}/></g>`;
-  s += bunny(560, 290, 1);
+  s += chef(370, 288, 'cat', 'left') + chef(572, 288, 'dog', 'right');
   document.getElementById('city').innerHTML = s;
 }
 </script>
