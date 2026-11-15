@@ -27,6 +27,10 @@ async def _step(pg, state):
         if n < 3 and await free.count():
             await free.first.click(); state['grabs'][id(pg)] = n + 1; return
         await pg.locator('[data-act=mkdone]').click(); state['grabs'][id(pg)] = 0; return
+    if ph == 'commit' and not await pg.locator('[data-act=commit]').count() and await pg.locator('[data-act=astep]:not(.aback)').count():
+        if await pg.locator('.acard.you.on').count() == 0 and await pg.locator('.acard.you[data-act=ad]:not([disabled])').count():
+            await pg.locator('.acard.you[data-act=ad]:not([disabled])').first.click(); return  # one ad for your restaurant
+        await pg.locator('[data-act=astep]:not(.aback)').first.click(); return  # day 3 intro, budget, then on to the next ads page
     if ph == 'commit' and await pg.locator('[data-act=commit]').count():
         if not await pg.locator('.acard.on').count() and await pg.locator('[data-act=ad]:not([disabled])').count():
             await pg.locator('[data-act=ad]:not([disabled])').first.click()

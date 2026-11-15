@@ -400,7 +400,7 @@ function F(defaults) {
 // =====================================================================
 // Rendering (UI v3). Every screen is built from plain words: what happened to you, and why.
 // =====================================================================
-const V = 'v21';
+const V = 'v23';
 const IMG = { art: `assets/key-art.jpg?v=${V}`, country: `assets/countryside.jpg?v=${V}`, city: `assets/city.jpg?v=${V}` };
 const STEPS = [['commit', 'Ads'], ['invest', 'Staff'], ['market', 'Market'], ['service', 'Service'], ['report', 'Recap']];
 // Day 1 has no Market (free food instead), and ads start on day CFG.adsFrom (then they are the first step), so early days have fewer steps
@@ -415,7 +415,7 @@ function adReserve(s) {
 // What a player knows before the flip: how many cards the rival placed on them, not which
 function rivalCardsNote(s) {
   const S = app.S, o = other(s), n = S.round >= CFG.adsFrom && S.commits && S.commits[o] ? S.commits[o].nRival : 0;
-  return n ? `<span class="pill2 rivalcards">🂠 ${esc(nameOf(o))} played ${plural(n, 'card')} on you · they flip before service</span>` : '';
+  return n ? `<span class="pill2 rivalcards">📣 ${esc(nameOf(o))} placed ${plural(n, 'ad')} for you · revealed before dinner</span>` : '';
 }
 const PRIVATE_LINES = ['Shady deal', 'Reservation paid', 'Inspector fine'];
 const PRIVATE_WHY = ['reservation had no seat −1', 'inspector −1'];
@@ -577,7 +577,7 @@ function howtoHTML() {
       ${sec('day', 'A day, step by step', 'What you do in each of the 5 steps', `<ol class="steps">
         <li><b>Staff</b><br>Hire bunnies. Each one seats and serves the ${C.staff.perSection} tables on its rug. Wages are paid every morning before you open, and bunnies stay until you let them go ($${C.staff.fire} to say goodbye).</li>
         <li><b>Market</b><br>You both shop at once for ${C.market.time} seconds. Whoever clicks first gets the food. <b>Express</b> ($${C.market.exp.price}) arrives today. <b>Regular</b> ($${C.market.reg.price}) is cheaper, but might not arrive until tomorrow. On the last day there's only Express.</li>
-        <li><b>Ads</b> (from day ${C.adsFrom}, first thing in the morning)<br>Buy cards that bring you guests, or that cause trouble for your rival. You only see how many cards your rival played on you. All cards flip just before service, and you pay for yours then.</li>
+        <li><b>Ads</b> (from day ${C.adsFrom}, first thing in the morning)<br>Buy ads that bring you guests, or that cause trouble for your rival. You see what your own ads do right away; you only learn what your rival's ads do to you right before the doors open. Ads are paid then too.</li>
         <li><b>Service</b><br>Guests walk in for ${Math.round(C.service.live.dayLen / 60)} minutes. Your bunnies look after their own tables. You are the chef: click a guest at the door to seat them, click a seated guest to bring a plate. Out of plates? Click the stove to rush one ($${C.service.rush[0]}–${C.service.rush[1]}). Guests wait about ${C.service.live.qPat} seconds before they leave unhappy.</li>
         <li><b>Recap</b><br>See what you earned, what you spent and how your stars changed. Leftover food goes bad overnight.</li></ol>`)}
       ${sec('stars', 'Stars', 'How to earn them and how to lose them', `<p>You start with ${C.startStars} stars. They change at the end of each day.</p>
@@ -600,7 +600,7 @@ function howtoHTML() {
 // ---------- shared pieces ----------
 function themStatus(o) {
   const S = app.S, done = S.submitted[o] || (!S.waiting[o] && S.waiting[other(o)]);
-  const t = { pick: ['choosing', 'has picked'], invest: ['still choosing', 'ready'], market: ['shopping', 'done shopping'], commit: ['choosing cards', 'cards placed'],
+  const t = { pick: ['choosing', 'has picked'], invest: ['still choosing', 'ready'], market: ['shopping', 'done shopping'], commit: ['choosing ads', 'ads placed'],
     reveal: ['', ''], service: ['still serving', 'closed for the day'], voucher: ['', 'ready'], report: ['reading their recap', 'ready'] }[S.phase] || ['', ''];
   return done ? t[1] : t[0];
 }
@@ -795,6 +795,7 @@ function buildHTML(s) {
   }
   const f = F({ staff: p.staff.slice(), choice: null, loan: false, stage: '', tip: 0 }), needChoice = e && e.type === 'shady';
   if (day1 && !f.gift) return giftHTML(s);
+  if (S.round >= CFG.adsFrom && !f.seenAds) return hiddenAdsHTML(s);
   if (needChoice && !f.offer) return `<div class="solo2">${offerHTML(s, f)}</div>`;
   const loanOn = CFG.loan.enabled && !p.loan; // loans are off in CFG for now; this brings the option back if the team turns them on
   const reserved = adReserve(s), mine = myCards(s);
@@ -962,39 +963,72 @@ function adCard(id, o, { state = '', button = true, stamp = '' } = {}) {
   return `<button type="button" class="${cls}" data-act="ad" data-id="${id}" aria-pressed="${state === 'on'}" aria-label="${esc(label)}${state === 'poor' ? ' (not enough cash)' : ''}" ${state === 'poor' ? 'disabled' : ''}>${inner}</button>`;
 }
 const cardBack = (i = 0) => `<div class="acard back" aria-hidden="true">${ART.badge('cb' + i)}</div>`;
+// ---------- ads (from day CFG.adsFrom; the team's sketch, prototypes/ads-flow) ----------
+// One step, several screens (f.astep): day 3 opens with an intro and the budget; then ads for your restaurant, then ads for your opponent.
+const MEGAPHONE = `<svg class="megaphone" viewBox="0 0 200 140" aria-hidden="true"><path d="M40 60 l80 -40 v100 l-80 -40z" fill="#E8392B" stroke="#2B1D14" stroke-width="5" stroke-linejoin="round"/>
+  <rect x="18" y="52" width="26" height="36" rx="6" fill="#FFD21F" stroke="#2B1D14" stroke-width="5"/><ellipse cx="122" cy="70" rx="12" ry="50" fill="#FFF7EC" stroke="#2B1D14" stroke-width="5"/>
+  <path d="M50 86 l10 34 h18 l-8 -26" fill="#F4A261" stroke="#2B1D14" stroke-width="5" stroke-linejoin="round"/><path d="M150 40 l24 -14 M156 70 h28 M150 100 l24 14" stroke="#E8392B" stroke-width="6" stroke-linecap="round"/></svg>`;
 function adsHTML(s) {
-  const S = app.S, p = S.players[s], o = other(s), k = S.waiting[s];
+  const S = app.S, p = S.players[s], o = other(s), k = S.waiting[s], A = CFG.ads;
   if (!k) {
     const mine = myCards(s), ids = mine ? [...mine.self, ...mine.rival] : [];
-    return shell(fhead('Your cards are face down', ids.length ? `${esc(nameOf(o))} only sees ${plural(ids.length, 'card back')}. They flip when service starts.` : 'You chose not to play any cards today.')
-      + (ids.length ? `<div class="hand2"><div class="hrow">${ids.map(id => adCard(id, o, { button: false })).join('')}</div></div>` : ''),
-      waitBox(o, 'Hiring staff comes next, then the Market. All cards flip just before service.'));
+    return `<section class="adsflow"><div class="card2 adsc center">${ids.length ? `<h1 class="funt">Your ads are placed</h1><span class="fsub">${esc(nameOf(o))} only knows how many ads you placed for them, not which.</span>
+      <div class="adhand">${ids.map(id => adCard(id, o, { button: false })).join('')}</div>` : `<h1 class="funt">No ads today</h1><span class="fsub">You chose not to place any ads.</span>`}
+      ${waitBox(o, 'Hiring staff comes next, then the Market.')}</div></section>`;
   }
-  const f = F({ sel: [] }), sh = S.shops[s], A = CFG.ads;
+  const first = S.round === CFG.adsFrom;
+  const f = F({ sel: [], astep: first ? 'intro' : 'self' }), sh = S.shops[s];
   const cost = f.sel.reduce((a, id) => a + A[id].price, 0), left = p.cash - cost;
-  const self = f.sel.filter(id => A[id].side === 'self'), rival = f.sel.filter(id => A[id].side === 'rival');
-  const E = expectedDemand(p, self), E0 = expectedDemand(p), poach = rival.includes('poach') ? A.poach.n : 0;
-  const gMin = Math.max(0, E.min) + poach, gMax = E.max + poach, tables = p.tables, food = p.ingr, deliv = self.includes('delivery') ? A.delivery.n : 0;
-  const seat = Math.min(tables + deliv, food), canAll = gMax <= seat, short = food < Math.min(gMax, tables + deliv) ? 'plates' : 'seats';
-  const range = (a, b) => (a === b ? `${b}` : `${a}–${b}`);
-  const base = range(Math.max(0, E0.min), E0.max), now = range(gMin, gMax);
-  const names = self.concat(rival.filter(id => id === 'poach')).map(cardName).join(' + ');
-  const both = food < Math.min(gMax, tables + deliv) && tables + deliv < gMax;
-  const verdict = canAll
-    ? verdict2('ok', seat > gMax + 2 ? `✓ Everyone gets served, with ${seat - gMax} seats and plates to spare. Spare food goes bad overnight.` : '✓ Your seats and plates cover everyone.')
-    : verdict2('warn', `${f.sel.length && names ? `With ${esc(names)}, ` : ''}${plural(gMax - seat, 'guest')} won't have ${both ? 'a seat or a plate' : short === 'plates' ? 'a plate' : 'a seat'}.${gMax - seat >= 4 ? ' Fewer ads might earn you more.' : ''}`);
-  const scale = Math.max(12, gMax, tables + deliv, food);
-  const bar = (l, val, solid, extra, cls = '') => `<div class="bar2 ${cls}"><div class="bl"><span>${l}</span><b>${val}</b></div><div class="bt"><i style="width:${solid / scale * 100}%"></i><i class="ht" style="width:${extra / scale * 100}%"></i></div></div>`;
-  const b0 = Math.max(0, E0.max);
   const card = id => adCard(id, o, { state: f.sel.includes(id) ? 'on' : A[id].price > left ? 'poor' : '' });
-  return shell(fhead('Play your cards', `Tap to play face-down. ${esc(nameOf(o))} only sees how many. Cards are paid when they flip, just before service.`, morningLine(s))
-      + `<div class="hand2" aria-label="Today's ad cards"><div class="hrow">${sh.self.map(card).join('')}</div><div class="hrow">${sh.rival.map(card).join('')}</div></div>`,
-    box(`${lab('Tonight, if you play these')}
-        ${bar('Guests', now !== base ? `${base} → ${now}${names ? ` with ${esc(names)}` : ''}` : now, Math.min(b0, gMax), Math.max(0, gMax - b0))}
-        <span class="fnote">You hire staff and buy food after this, so plan for these guests. ${esc(nameOf(o))}'s cards on you are a surprise until just before service.</span>`)
-    + box(`<div class="bhead">${lab('Played face-down')}<span>${esc(nameOf(o))} sees: ${plural(f.sel.length, 'card')}</span></div>
-        <div class="backs2">${f.sel.length ? f.sel.map((_, i) => cardBack(i)).join('') : '<span class="fnote">No cards yet.</span>'}<b>${usd(-cost)}</b></div>`),
-    `<button class="cta" data-act="commit">${f.sel.length ? `Lock in ${plural(f.sel.length, 'card')}` : 'Skip ads today'}</button>`);
+  const next = (v, label) => `<button class="cta inline" data-act="astep" data-v="${v}">${label}</button>`;
+  const back = '<button type="button" class="aback" data-act="astep" data-v="budget">← Budget</button>';
+  if (f.astep === 'intro') return `<section class="adsflow"><div class="card2 adsc center intro"><span class="lab">Day ${S.round}</span><h1 class="funt big">Get the word out!</h1>${MEGAPHONE}
+      <span class="fsub">From today you can buy <b>ads</b>: some bring guests to your restaurant, some cause trouble for your rival.</span>${next('budget', 'Plan my ads')}</div></section>`;
+  if (f.astep === 'budget') {
+    const tile = (now, when, em, h, t) => `<div class="btile ${now ? 'now' : ''}"><span class="when">${when}</span><span class="em" aria-hidden="true">${em}</span><b>${h}</b><span>${t}</span></div>`;
+    return `<section class="adsflow"><div class="card2 adsc"><h1 class="funt">Before dinner · Budget</h1>
+      <span class="fsub">Today your money goes to three things. Ads come first, so keep enough for the rest.</span>
+      <div class="btiles">${tile(true, 'Now', '📣', 'Ads', 'Bring guests, or trouble your rival. Paid just before dinner.')}${tile(false, 'Next', '🐰', 'Staff', `$${wageOf(p)} a day for each server you keep.`)}${tile(false, 'Then', '🥕', 'Food', 'Buy plates at the Market. Leftovers go bad.')}</div>
+      ${next('self', 'Next')}</div></section>`;
+  }
+  if (f.astep === 'self') {
+    const self = f.sel.filter(id => A[id].side === 'self'), E0 = expectedDemand(p), E = expectedDemand(p, self);
+    const g0 = Math.round(E0.total), g1 = Math.round(E.total);
+    return `<section class="adsflow"><div class="card2 adsc"><div class="ahead">${back}<h1 class="funt">Ads for your restaurant</h1></div>
+      <div class="adhand">${sh.self.map(card).join('')}</div>
+      <div class="asum"><span>Tonight, with these: <b class="you">about ${g0}${g1 !== g0 ? ` → ${g1}` : ''} guests</b></span><span>Ads so far: <b>${usd(cost)}</b></span></div>
+      ${next('rival', 'Next')}</div></section>`;
+  }
+  return `<section class="adsflow"><div class="card2 adsc"><div class="ahead">${back}<h1 class="funt">Ads for your opponent</h1></div>
+      <div class="anote"><span>🤫 ${esc(nameOf(o))} can't see what these do until right before the doors open for dinner.</span><span>But remember: that means you can't see what ads they placed for you either!</span></div>
+      <div class="adhand">${sh.rival.map(card).join('')}</div>
+      <div class="asum"><span></span><span>Ads so far: <b>${usd(cost)}</b></span></div>
+      <button class="cta inline" data-act="commit">Confirm ads</button></div></section>`;
+}
+// Before staff: how many ads the opponent placed for you (not which)
+function hiddenAdsHTML(s) {
+  const S = app.S, o = other(s), n = S.commits && S.commits[o] ? S.commits[o].nRival : 0;
+  return `<section class="adsflow"><div class="card2 adsc center"><h1 class="funt">Opponent ads: ${n}</h1>
+    <span class="fsub">${n ? `${esc(nameOf(o))} placed ${plural(n, 'ad')} for your restaurant. You'll find out what ${n === 1 ? 'it does' : 'they do'} right before the doors open.` : `${esc(nameOf(o))} didn't place any ads for your restaurant today.`}</span>
+    ${n ? `<div class="envs">${Array.from({ length: n }, (_, i) => `<span class="env" style="transform:rotate(${i % 2 ? 5 : -6}deg)"><b>?</b></span>`).join('')}</div>` : ''}
+    <button class="cta inline" data-act="stage" data-v="ads">Ready</button></div></section>`;
+}
+// Right before the doors open: what the opponent's ads do to you tonight
+const RECEIVED = {
+  review: (A) => [`−${A.n} guests`, `A bad review keeps ${A.n} of your guests away tonight.`],
+  poach: (A, o) => [`−${A.n} guest`, `${plural(A.n, 'guest')} goes to ${o} instead of you.`],
+  swamp: (A) => [`+${A.n} guests`, `${A.n} extra guests come to you tonight. Can you serve them all?`],
+  corner: (A) => [`+$${A.extra} rush`, `Each plate you rush tonight costs $${A.extra} more.`],
+  fake: () => ['No effect', 'This ad does nothing at all.']
+};
+function receivedHTML(s, list) {
+  const o = esc(nameOf(other(s)));
+  const ad = x => { const A = CFG.ads[x.id], [big, line] = (RECEIVED[x.id] || (() => ['', A.desc]))(A, o);
+    return `<div class="radc"><span class="em" aria-hidden="true">${adFace(x.id).art}</span><b>${esc(A.name)}</b><span class="big">${big}</span><span>${line}</span></div>`; };
+  return `<section class="adsflow"><div class="card2 adsc center"><h1 class="funt">Ads received</h1>
+    <span class="fsub">${o} placed ${list.length === 1 ? 'this ad' : 'these ads'} for your restaurant. Here's what ${list.length === 1 ? 'it does' : 'they do'} tonight.</span>
+    <div class="radlist">${list.map(ad).join('')}</div>
+    <button class="cta inline" data-act="play">Open restaurant</button></div></section>`;
 }
 
 // ---------- service ----------
@@ -1127,8 +1161,10 @@ function serviceHTML(s) {
     return shell(fhead('Closed for the night', 'Your doors are closed.') + `<div class="cpills"><span class="cp earn">+${usd(r.earned || 0)} tonight</span><span class="cp seat">Served ${(r.served || 0) + (r.delivered || 0)}</span><span class="cp ${r.unhappy ? 'bad' : ''}">Left unhappy ${r.unhappy || 0}</span></div>`,
       waitBox(o, 'The recap opens when they finish serving.') + starCheck(r.unhappy || 0, `${r.unhappy || 0} unhappy`));
   }
-  // before the doors open: the ad cards flip one at a time, by themselves
-  const list = S.round >= CFG.adsFrom ? flipList(s) : [];
+  // before the doors open: what the opponent's ads do to you tonight
+  const recv = S.round >= CFG.adsFrom ? sc.info.filter(x => x.k === 'card' && x.from === 'rival') : [];
+  if (!sv.started && recv.length) return receivedHTML(s, recv);
+  const list = [];
   if (!sv.started && list.length) {
     const shownN = Math.min(sv.flip, list.length), done = shownN >= list.length;
     const start = sc.base + p.wom;
@@ -1357,7 +1393,8 @@ document.addEventListener('click', e => {
     }
     case 'inc': { const f = F({}); f[b.dataset.f] = Math.max(0, (f[b.dataset.f] || 0) + Number(b.dataset.d)); return render(); }
     case 'choose': { const f = F({}); f.choice = b.dataset.c; return render(); }
-    case 'stage': { const f = F({}), v = b.dataset.v; if (v === 'gift') f.gift = true; else if (v === 'offer') f.offer = true; return render(); }
+    case 'stage': { const f = F({}), v = b.dataset.v; if (v === 'gift') f.gift = true; else if (v === 'offer') f.offer = true; else if (v === 'ads') f.seenAds = true; return render(); }
+    case 'astep': { const f = F({}); f.astep = b.dataset.v; return render(); }
     case 'loan': { const f = F({}); f.loan = b.dataset.v === '1'; return render(); }
     case 'hiretipback': { const f = F({}); f.tip = Math.max(0, (f.tip || 0) - 1); return render(); }
     case 'hiretip': {
