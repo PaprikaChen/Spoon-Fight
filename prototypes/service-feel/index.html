@@ -62,6 +62,16 @@ summary{cursor:pointer;font-weight:900}
 .linkish{appearance:none;border:0;background:none;padding:0;color:#7A5A40;font:800 12px var(--body);text-decoration:underline;cursor:pointer}
 .coach .step{font-size:11px;font-weight:800;color:#7A5A40;letter-spacing:.04em}
 details.controls{background:none;padding:0}
+.build{position:absolute;z-index:2;background:var(--ink);color:#3A2A1E;border-radius:16px;box-shadow:0 4px 0 rgba(0,0,0,.35);padding:12px 14px;display:flex;flex-direction:column;gap:7px;overflow:auto;font-size:13px;font-weight:700;line-height:1.35}
+.build h3{font-family:var(--display);font-size:20px;margin:0}
+.build .big{font-size:26px;font-weight:900;font-variant-numeric:tabular-nums}
+.build .row2{display:flex;justify-content:space-between;gap:8px;font-variant-numeric:tabular-nums}
+.build .row2 b{font-weight:900}
+.build .warn{background:#FFE1E3;color:#B3261E;border-radius:10px;padding:6px 8px;font-weight:800}
+.build .me{color:#7A5A40;font-size:12px}
+.build .btn{margin-top:auto}
+.sec-hit{cursor:pointer}
+.sec-hit:hover{stroke:#FFE08A;stroke-width:4;stroke-dasharray:9 6}
 details.controls summary{color:var(--muted);font-size:13px}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
 </style>
@@ -96,6 +106,7 @@ details.controls summary{color:var(--muted);font-size:13px}
     <svg id="scene" viewBox="0 0 1352 600" role="img" aria-label="Restaurant during service"></svg>
     <div class="toast" id="toast" style="opacity:0"></div>
     <div class="coach" id="coach" hidden><span class="step" id="coachStep"></span><p id="coachText"></p><div class="row" id="coachRow"><button class="btn" id="coachNext" hidden>Next</button></div></div>
+    <div class="build" id="build" hidden></div>
     <div class="overlay" id="ov"></div>
   </div>
 
@@ -116,7 +127,10 @@ const PARAMS = [
   ['first', 'First guest arrives at (s)', 2, 30, 1, 6],
   ['gap', 'Longest wait between walk-ins (s)', 3, 30, 1, 8],
   ['guests', 'Walk-in guests per day', 4, 30, 1, 14],
-  ['staff', 'Staff (bunnies)', 0, 10, 1, -1],
+  ['wageC', 'Wage per bunny per day, Countryside ($)', 0, 20, 1, 6],
+  ['wageT', 'Wage per bunny per day, City ($)', 0, 20, 1, 10],
+  ['cash3', 'Day 3 test: cash before hiring ($)', 0, 200, 5, 75],
+  ['foodWarn', 'Warn when cash left for food is under ($, TBD)', 0, 60, 1, 20],
   ['plates', 'Plates ready at opening', 0, 20, 1, 8],
   ['chefSpeed', 'Your walking speed (px/s)', 60, 320, 10, 160],
   ['staffSpeed', 'Staff walking speed (px/s)', 60, 320, 10, 130],
@@ -207,9 +221,8 @@ const NS = 'http://www.w3.org/2000/svg';
 const svg = document.getElementById('scene');
 let L = {}; // layers
 let tables = [], sections = [];
-function buildStatic() {
-  const cols = LOC === 'country' ? 5 : 4, nT = LOC === 'country' ? 20 : 16;
-  const nStaff = P.staff < 0 ? (LOC === 'country' ? 4 : 3) : Math.min(P.staff, nT / 2);
+function buildStatic(hired, mode) {
+  const cols = LOC === 'country' ? 5 : 4;
   let g = `<defs>
     <pattern id="wood" width="140" height="40" patternUnits="userSpaceOnUse"><rect width="140" height="40" fill="#C99A6B"/><rect y="20" width="140" height="20" fill="#C1915F"/><path d="M0 20 H140 M0 40 H140" stroke="#A97B4F" stroke-width="2"/><path d="M60 0 V20 M130 20 V40 M30 20 V40" stroke="#A97B4F" stroke-width="2"/></pattern>
     <pattern id="tile" width="34" height="34" patternUnits="userSpaceOnUse"><rect width="34" height="34" fill="#F3E9DA"/><rect x="2" y="2" width="14" height="14" rx="2" fill="#E8D6BD"/><rect x="18" y="18" width="14" height="14" rx="2" fill="#E8D6BD"/><path d="M0 17 H34 M17 0 V34" stroke="#D8C2A3" stroke-width="1.4"/></pattern>
@@ -234,7 +247,7 @@ function buildStatic() {
   const FX0 = RX + 22, FX1 = KX - 22, gap = 16, secW = (FX1 - FX0 - (cols - 1) * gap) / cols, rowY = [RY + 22, AY[1] + 14], secH = AY[0] - 10 - rowY[0];
   tables = []; sections = [];
   for (let r = 0; r < 2; r++) for (let c = 0; c < cols; c++) {
-    const i = r * cols + c, x = FX0 + c * (secW + gap), y = rowY[r], on = i < nStaff;
+    const i = r * cols + c, x = FX0 + c * (secW + gap), y = rowY[r], on = hired.has(i);
     sections.push({ i, x, y, w: secW, h: secH, on, home: { x: x + secW / 2, y: y + secH - 18 }, row: r });
     if (on) {
       const col = '#A9C79F';
@@ -259,10 +272,16 @@ function buildStatic() {
   [[34, 22], [80, 22], [126, 22], [34, 48], [80, 48], [126, 48]].forEach(([dx, dy], i) => k += `<circle cx="${SXs + dx}" cy="${SY + dy}" r="11" fill="${i === 1 ? '#E76F51' : '#2F323B'}" stroke="#1E2027" stroke-width="2"/>`);
   k += `<ellipse cx="${SXs + 80}" cy="${SY + 20}" rx="17" ry="10" fill="#9AA3AD" stroke="${OUT}" stroke-width="1.5"/><g transform="translate(${SXs + 160} ${SY})"><rect x="-24" y="-10" width="48" height="20" rx="10" fill="#E76F51" stroke="${OUT}" stroke-width="1.2"/><text y="4" text-anchor="middle" font-size="10" font-weight="800" fill="#FFF7EC" font-family="Nunito,sans-serif">RUSH</text></g></g>`;
   k += `<rect x="${KX + 120}" y="${DY}" width="${KR - KX - 144}" height="128" rx="12" fill="rgba(255,247,236,.7)" stroke="#7A5A40" stroke-width="2" stroke-dasharray="7 5"/><text x="${KX + 120 + (KR - KX - 144) / 2}" y="${DY + 20}" text-anchor="middle" font-size="11" font-weight="800" letter-spacing="1.5" fill="#7A5A40" font-family="Nunito,sans-serif">DELIVERY PICKUP</text><rect x="${KX + 136}" y="${DY + 34}" width="70" height="20" rx="5" fill="#B08D6E" stroke="${OUT}" stroke-width="1.5"/>`;
-  svg.innerHTML = g + k + `<g id="L-plates"></g><g id="L-bus"></g>` + chairs + `<g id="L-seated"></g>` + tops + `<g id="L-tplates"></g><g id="L-walk"></g><g id="L-over"></g><g id="L-ui"></g>`;
+  // Build mode: bunnies stand on their rugs, every section is clickable, the kitchen is greyed out under the budget card
+  let b = '';
+  if (mode === 'build') {
+    sections.forEach(sc => { if (sc.on) b += `<g transform="translate(${sc.home.x} ${sc.home.y})" pointer-events="none">${staffDraw(true, false)}</g>`; });
+    b += `<g pointer-events="none" transform="translate(${STOVE.x} ${STOVE.y}) scale(1.25)">${meDraw(false)}</g><rect x="${KX}" y="${RY}" width="${KR - KX}" height="${RH}" fill="rgba(43,36,32,.45)" pointer-events="none"/>`;
+    sections.forEach(sc => { b += `<rect class="sec-hit" data-click="s${sc.i}" x="${sc.x}" y="${sc.y}" width="${sc.w}" height="${sc.h}" rx="16" fill="transparent"/>`; });
+  }
+  svg.innerHTML = g + k + `<g id="L-plates"></g><g id="L-bus"></g>` + chairs + `<g id="L-seated"></g>` + tops + `<g id="L-tplates"></g><g id="L-build">${b}</g><g id="L-walk"></g><g id="L-over"></g><g id="L-ui"></g>`;
   ['plates', 'bus', 'seated', 'tplates', 'walk', 'over', 'ui'].forEach(n => L[n] = svg.querySelector('#L-' + n));
   L.ui.setAttribute('pointer-events', 'none');
-  return nStaff;
 }
 const el = (parent, html, attrs = {}) => { const g = document.createElementNS(NS, 'g'); for (const a in attrs) g.setAttribute(a, attrs[a]); g.innerHTML = html; parent.appendChild(g); return g; };
 
@@ -286,10 +305,67 @@ function moveAlong(e, sp, dt) {
 }
 const slotPos = i => ({ x: RX - 46 - (i % 3) * 40, y: QY + Math.floor(i / 3) * 56 + (i % 3 === 1 ? 6 : 0) });
 
+// ---------------- Build: hire / fire bunnies ----------------
+// Wages are paid every day before opening. Bunnies stay from day to day; you can hire or let go any section.
+const HIRED = { country: [], city: [] };
+const LOCC = { country: { open: 20, rent: 5 }, city: { open: 35, rent: 12 } };   // from engine CFG.loc
+const wage = () => (LOC === 'country' ? P.wageC : P.wageT);
+const startCash = () => (DAY === 1 ? 100 - LOCC[LOC].open - LOCC[LOC].rent : P.cash3);
+function forecast() {
+  // engine expectedDemand(): base walk-ins + rep (0 at 3 stars) + expected guests from your own ad cards
+  const ads = DAY === 3 ? (LOC === 'country' ? 2 : 3) : 0;
+  return { guests: P.guests + ads, note: DAY === 3 ? (LOC === 'country' ? 'Flyers +2. A tour bus may stop by (+6).' : 'Office lunch deal +3, plus 2 delivery orders.') : '' };
+}
 function newDay() {
-  const nStaff = buildStatic();
   document.documentElement.style.setProperty('--me', MC());
-  S = { t: 0, cash: 0, served: 0, unhappy: 0, plates: P.plates, guests: [], couriers: [], staff: [], floats: [], popups: [], ended: false, open: false, closed: false, nextId: 1, mTime: 0, bus: null, rushed: 0 };
+  const hired = new Set(DAY === 1 ? [] : HIRED[LOC]);
+  S = { phase: 'build', cash: startCash(), hired, before: hired.size, tut: { on: true, hints: [], freeze: null, tour: -1, flashAd: 0 }, ended: false, open: false };
+  document.getElementById('ov').hidden = true; document.getElementById('coach').hidden = true;
+  document.getElementById('tleft').textContent = `${Math.floor(P.dayLen / 60)}:${String(P.dayLen % 60).padStart(2, '0')}`;
+  document.getElementById('tfill').style.width = '0%';
+  document.getElementById('track').querySelectorAll('.ev').forEach(n => n.remove());
+  ['cash', 'served', 'unhappy'].forEach(id => document.getElementById(id).textContent = id === 'cash' ? S.cash : 0);
+  drawBuild();
+  if (DAY === 1) {
+    const ov = document.getElementById('ov'); ov.hidden = false;
+    ov.innerHTML = `<div class="card"><h2>Time to hire staff</h2><p>You can't run the restaurant alone. Click a section to hire a bunny. Each bunny covers 2 tables.</p><button class="btn" id="go">Got it</button></div>`;
+    ov.querySelector('#go').onclick = () => { ov.hidden = true; };
+  }
+}
+function drawBuild() {
+  buildStatic(S.hired, 'build');
+  const n = S.hired.size, T = sections.length * 2, w = wage(), after = S.cash - n * w, f = forecast();
+  const box = document.getElementById('build'); box.hidden = false;
+  box.style.left = (KX / W * 100 + 0.8) + '%'; box.style.top = (RY / H * 100 + 1.5) + '%';
+  box.style.width = ((KR - KX) / W * 100 - 1.6) + '%'; box.style.height = (RH / H * 100 - 3) + '%';
+  const kept = DAY === 1 ? '' : `<div class="me">Bunnies from yesterday stay. Click a rug to let one go.</div>`;
+  const warn = DAY !== 1 && after < P.foodWarn ? `<div class="warn">Only $${after} left for food at the market.</div>` : '';
+  box.innerHTML = `<h3>Hire staff</h3>
+    <div class="row2"><span>Cash</span><span class="big">$${S.cash}</span></div>
+    <div class="row2"><span>Wage</span><b>$${w} per bunny a day</b></div>
+    <div class="row2"><span>Bunnies</span><b>${n}</b></div>
+    <div class="row2"><span>Tables covered</span><b>${2 * n} of ${T}</b></div>
+    <div class="row2"><span>Expect about</span><b>${f.guests} guests</b></div>${f.note ? `<div class="me">${f.note}</div>` : ''}
+    <div class="row2"><span>Wages today</span><b>−$${n * w}</b></div>
+    <div class="row2"><span>Cash after wages</span><b>$${after}</b></div>${warn}${kept}
+    <div class="me">You cook in the kitchen. When the bunnies can't keep up, you seat and serve guests too.</div>
+    <button class="btn" id="openSvc">Open for service</button>`;
+  box.querySelector('#openSvc').onclick = startService;
+}
+function toggleHire(i) {
+  const h = S.hired;
+  if (h.has(i)) { h.delete(i); return drawBuild(); }
+  if (S.cash - (h.size + 1) * wage() < 0) return toast('Not enough cash for another bunny');
+  h.add(i);
+  if (!S.firstHire && DAY === 1) { S.firstHire = true; toast(`Hired! Each bunny costs $${wage()} a day.`); }
+  drawBuild();
+}
+function startService() {
+  const hired = S.hired, cash = S.cash - hired.size * wage(), wages = hired.size * wage();
+  HIRED[LOC] = [...hired];
+  document.getElementById('build').hidden = true;
+  buildStatic(hired, 'service');
+  S = { t: 0, cash, wages, earned: 0, spent: 0, served: 0, unhappy: 0, plates: P.plates, guests: [], couriers: [], staff: [], floats: [], popups: [], ended: false, open: false, closed: false, nextId: 1, mTime: 0, bus: null, rushed: 0 };
   S.tut = { on: true, seen: {}, freeze: null, tour: -1, hints: [], g: null, flashAd: 0, steps: DAY === 1 ? TOUR : DAY === 3 ? (LOC === 'country' ? TOUR3C : TOUR3T) : [] };
   S.cards = {};
   sections.filter(s => s.on).forEach(s => S.staff.push({ sec: s, x: s.home.x, y: s.home.y, path: [], task: null, carry: false, node: el(L.walk, '', { 'pointer-events': 'none' }) }));
@@ -327,6 +403,8 @@ function newDay() {
   S.sched.filter(e => e.kind === 'bus').forEach(e => { const m = document.createElement('span'); m.className = 'ev'; m.style.left = (e.t / dl * 100) + '%'; m.textContent = 'BUS'; tr.appendChild(m); });
   // plates on the counter
   drawPlates();
+  // tour steps that point at a bunny or a no-staff section only make sense if there is one
+  S.tut.steps = S.tut.steps.filter(st => !st.need || sections.some(sc => st.need === 'staff' ? sc.on : !sc.on));
   showStart();
 }
 
@@ -406,7 +484,7 @@ function chefUpdate(dt) {
     } else {
       ch.carry = false;
       if (a.type === 'serve') { if (tgt.state === 'wait') startEating(tgt); else { S.plates++; drawPlates(); } }
-      else { if (tgt.state === 'wait') { if (S.cards[tgt.card]) S.cards[tgt.card].served++; S.cash += price(); S.served++; float(tgt.x, tgt.y - 70, '+$' + price()); tgt.state = 'out'; tgt.path = [{ x: KR + 40, y: tgt.y }]; } else { S.plates++; drawPlates(); } }
+      else { if (tgt.state === 'wait') { if (S.cards[tgt.card]) S.cards[tgt.card].served++; S.cash += price(); S.earned += price(); S.served++; float(tgt.x, tgt.y - 70, '+$' + price()); tgt.state = 'out'; tgt.path = [{ x: KR + 40, y: tgt.y }]; } else { S.plates++; drawPlates(); } }
       done();
     }
   } else if (a.type === 'rush') {
@@ -428,7 +506,7 @@ function rushTry() {
     r.step++; r.flash = .35; r.ok = true;
     if (r.step >= r.zones.length) {
       if (ch.cur.practice) { S.plates++; drawPlates(); float(SC, SY - 14, '+1 plate (free)'); S.tut.practiced = true; ch.rush = null; ch.cur = null; return true; }
-      S.plates++; S.rushed++; S.cash -= P.rushCost; drawPlates(); float(SC, SY - 14, '+1 plate  −$' + P.rushCost); tutAfterRush();
+      S.plates++; S.rushed++; S.cash -= P.rushCost; S.spent += P.rushCost; drawPlates(); float(SC, SY - 14, '+1 plate  −$' + P.rushCost); tutAfterRush();
       ch.rush = null; ch.cur = null; const n = ch.queue.shift(); if (n) startAction(n);
     }
   } else { r.flash = .35; r.ok = false; }
@@ -495,7 +573,7 @@ function guestUpdate(g, dt) {
     if (!g.server) { g.pat -= dt; if (g.pat <= 0) leave(g, true); }
   } else if (g.state === 'eat') {
     g.eat -= dt;
-    if (g.eat <= 0) { if (g.card && S.cards[g.card]) S.cards[g.card].served++; S.cash += price(); S.served++; float(g.table.x, g.table.y - 60, '+$' + price()); leave(g, false); }
+    if (g.eat <= 0) { if (g.card && S.cards[g.card]) S.cards[g.card].served++; S.cash += price(); S.earned += price(); S.served++; float(g.table.x, g.table.y - 60, '+$' + price()); leave(g, false); }
   } else if (g.state === 'out') {
     moveAlong(g, 110, dt);
     if (!g.path.length) { g.node.remove(); g.ring.remove(); g.dead = true; }
@@ -616,15 +694,16 @@ function render() {
 }
 function float(x, y, txt) { S.floats.push({ x, y, txt, t: 1.2 }); }
 let toastT = 0;
-function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.style.opacity = 1; toastT = 2.2; }
+let toastTimer = 0;
+function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.style.opacity = 1; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.style.opacity = 0; }, 2200); }
 
 // ---------------- Day 1 tutorial ----------------
 // Pre-opening tour (clock not started), then three freezes that only lift when the player does the thing,
 // plus one-line hints that never stop the clock. All page-only: nothing here changes the rules.
 const TOUR = [
   { text: 'This is you, the chef.', spot: () => ({ c: [S.chef.x, S.chef.y - 50, 70] }), at: () => [S.chef.x, S.chef.y - 120] },
-  { text: 'Bunnies seat and serve their rug.', spot: () => { const s = sections.find(s => s.on); return s ? { r: [s.x - 6, s.y - 6, s.w + 12, s.h + 12] } : null; }, at: () => { const s = sections.find(s => s.on); return s ? [s.x + s.w / 2, s.y + s.h + 4] : [W / 2, H / 2]; }, below: true },
-  { text: 'No staff? Those tables are yours.', spot: () => { const s = sections.filter(s => !s.on).pop(); return s ? { r: [s.x - 6, s.y - 6, s.w + 12, s.h + 12] } : null; }, at: () => { const s = sections.filter(s => !s.on).pop(); return s ? [s.x + s.w / 2, s.y - 8] : [W / 2, H / 2]; } },
+  { need: 'staff', text: 'Bunnies seat and serve their rug.', spot: () => { const s = sections.find(s => s.on); return s ? { r: [s.x - 6, s.y - 6, s.w + 12, s.h + 12] } : null; }, at: () => { const s = sections.find(s => s.on); return s ? [s.x + s.w / 2, s.y + s.h + 4] : [W / 2, H / 2]; }, below: true },
+  { need: 'nostaff', text: 'No staff? Those tables are yours.', spot: () => { const s = sections.filter(s => !s.on).pop(); return s ? { r: [s.x - 6, s.y - 6, s.w + 12, s.h + 12] } : null; }, at: () => { const s = sections.filter(s => !s.on).pop(); return s ? [s.x + s.w / 2, s.y - 8] : [W / 2, H / 2]; } },
   { text: 'Out of food? Make a rush dish here.', spot: () => ({ r: [SXs - 12, SY - 12, 184, 102] }), at: () => [SC, SY + 96], below: true },
   { text: 'Try one now. This one is free!', done: 'Nice! That plate is yours.', practice: true, spot: () => ({ r: [KX + 16, SY - 12, KR - KX - 32, 250] }), at: () => [SC, SY - 20], last: true }
 ];
@@ -753,7 +832,6 @@ function update(dt) {
   if (S.chef.rush && S.chef.rush.flash > 0) S.chef.rush.flash -= dt;
   if (S.chef.rush && !(S.chef.cur && S.chef.cur.type === 'rush')) S.chef.rush.on = false;
   if (S.closed && !S.ended && !S.guests.some(g => g.state !== 'out') && !S.couriers.some(c => c.state !== 'out')) { S.ended = true; showEnd(); }
-  if (toastT > 0) { toastT -= dt; if (toastT <= 0) document.getElementById('toast').style.opacity = 0; }
 }
 let last = performance.now();
 function frame(now) {
@@ -762,7 +840,7 @@ function frame(now) {
   if (S && S.open && !S.ended && speed > 0 && !S.tut.freeze) { const n = speed; for (let i = 0; i < n; i++) { update(real); if (S.tut.freeze) break; } }
   if (S && S.tut.flashAd > 0 && !S.tut.freeze) S.tut.flashAd -= real;
   if (S && S.tut.hints.length) { S.tut.hints.forEach(h => h.t -= real); S.tut.hints = S.tut.hints.filter(h => h.t > 0); }
-  if (S) render();
+  if (S && S.phase !== 'build') render();
   requestAnimationFrame(frame);
 }
 
@@ -784,7 +862,7 @@ function showStart() {
 }
 function showEnd() {
   ov.hidden = false;
-  ov.innerHTML = `<div class="card"><h2>Closed for the night</h2><div class="stats"><span>Guests served</span><span>${S.served}</span><span>Left unhappy</span><span>${S.unhappy}</span><span>Plates left over</span><span>${S.plates}</span><span>Plates you rushed</span><span>${S.rushed}</span>${Object.entries(S.cards).map(([n, c]) => `<span>${n}</span><span>${c.came} ${c.kind === 'orders' ? 'orders' : 'guests'}, ${c.served} served</span>`).join('')}<span>Cash from tonight</span><span>$${S.cash}</span></div><p style="font-size:13px;color:#7A5A40">How did it feel? Try changing the tuning numbers below, then play the day again.</p><button class="btn" id="again">Play this day again</button></div>`;
+  ov.innerHTML = `<div class="card"><h2>Closed for the night</h2><div class="stats"><span>Guests served</span><span>${S.served}</span><span>Left unhappy</span><span>${S.unhappy}</span><span>Plates left over</span><span>${S.plates}</span><span>Plates you rushed</span><span>${S.rushed}</span>${Object.entries(S.cards).map(([n, c]) => `<span>${n}</span><span>${c.came} ${c.kind === 'orders' ? 'orders' : 'guests'}, ${c.served} served</span>`).join('')}<span>Wages paid</span><span>−$${S.wages}</span><span>Rush food</span><span>−$${S.spent}</span><span>Earned tonight</span><span>+$${S.earned}</span><span>Cash now</span><span>$${S.cash}</span></div><p style="font-size:13px;color:#7A5A40">How did it feel? Try changing the tuning numbers below, then play the day again.</p><button class="btn" id="again">Play this day again</button></div>`;
   ov.querySelector('#again').onclick = () => newDay();
 }
 
@@ -792,6 +870,7 @@ function showEnd() {
 // pointerdown, not click: the bubbles and rings are redrawn every frame, and a click is lost when the element under the pointer is replaced between press and release
 svg.addEventListener('pointerdown', e => {
   if (e.button !== 0) return;
+  if (S && S.phase === 'build') { const n = e.target.closest('[data-click]'); if (n && n.getAttribute('data-click')[0] === 's') toggleHire(+n.getAttribute('data-click').slice(1)); return; }
   if (S && S.tut.tour >= 0) { if (S.chef.cur && S.chef.cur.practice) rushTry(); return; }
   if (!S || !S.open || S.ended) return;
   // During a tip, a click anywhere inside the highlighted circle counts as the action the tip asks for.
@@ -818,7 +897,7 @@ svg.addEventListener('pointerdown', e => {
   }
 });
 window.addEventListener('keydown', e => {
-  if (e.code === 'Space' && S && (S.open || (S.chef.cur && S.chef.cur.practice)) && !S.ended && !['INPUT', 'BUTTON', 'SUMMARY'].includes(document.activeElement.tagName)) { e.preventDefault(); rushTry(); }
+  if (e.code === 'Space' && S && S.chef && (S.open || (S.chef.cur && S.chef.cur.practice)) && !S.ended && !['INPUT', 'BUTTON', 'SUMMARY'].includes(document.activeElement.tagName)) { e.preventDefault(); rushTry(); }
 });
 const press = (ids, on) => ids.forEach(i => document.getElementById(i).setAttribute('aria-pressed', i === on));
 document.getElementById('loc-country').onclick = () => { LOC = 'country'; press(['loc-country', 'loc-city'], 'loc-country'); newDay(); };
