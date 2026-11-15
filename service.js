@@ -905,5 +905,7 @@ function floorPlan(loc, hired, animal, color) {
   return `<svg class="rrplan" viewBox="0 0 ${W} ${H}" role="img" aria-label="Your restaurant: click a section to hire or let go a bunny">${p.html}</svg>`;
 }
 const sectionCount = loc => (loc === 'country' ? 10 : 8);
-window.RRService = { create, floorPlan, sectionCount };
+// Where the Build panel sits on the plan: the lower half of the kitchen (CSS for an absolutely placed box)
+const buildBox = `left:${(KX / W * 100 + 0.8).toFixed(2)}%;top:${((SY + 138) / H * 100).toFixed(2)}%;width:${((KR - KX) / W * 100 - 1.6).toFixed(2)}%;height:${((RY + RH - SY - 138) / H * 100 - 1.5).toFixed(2)}%`;
+window.RRService = { create, floorPlan, sectionCount, buildBox };
 })();

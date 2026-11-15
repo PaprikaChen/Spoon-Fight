@@ -400,7 +400,7 @@ function F(defaults) {
 // =====================================================================
 // Rendering (UI v3). Every screen is built from plain words: what happened to you, and why.
 // =====================================================================
-const V = 'v7';
+const V = 'v8';
 const IMG = { art: `assets/key-art.jpg?v=${V}`, country: `assets/countryside.jpg?v=${V}`, city: `assets/city.jpg?v=${V}` };
 const STEPS = [['invest', 'Staff'], ['market', 'Market'], ['commit', 'Ads'], ['service', 'Service'], ['report', 'Recap']];
 // Day 1 has no Market (free food instead), and ads start on day CFG.adsFrom, so early days have fewer steps
@@ -716,18 +716,37 @@ function offerHTML(s, f) {
     <div role="radiogroup" class="ochoices">${opts}</div>
     ${f.choice ? `<button class="cta" data-act="stage" data-v="offer">${go}</button>` : '<span class="fnote center">Pick one to continue. It\'s a yes or no, and neither is wrong.</span>'}</section>`;
 }
+// The Staff step: the restaurant fills the page (like Service); the money panel sits in the lower kitchen.
+// Day 1 starts with the team's three pop-ups (f.tip counts them).
+function hireStage(s, staff, card, over = '') {
+  const p = app.S.players[s], look = seatLook(s);
+  return `<div class="hstage">${RRService.floorPlan(p.loc, staff, look.animal, look.color)}<div class="hcard" style="${RRService.buildBox}">${card}</div>${over}</div>`;
+}
+const hrow = (l, r, cls = '') => `<div class="hrw ${cls}"><span>${l}</span><b>${r}</b></div>`;
+// A staff section as drawn on the team's sticky note: a green rug with two tables
+const SECTION_PIC = `<svg class="tippic" viewBox="0 0 120 92" aria-hidden="true"><rect x="4" y="4" width="112" height="84" rx="10" fill="#A7D49B" stroke="#52B788" stroke-width="3" stroke-dasharray="7 5"/>
+  ${[38, 82].map(x => `<rect x="${x - 10}" y="22" width="20" height="16" rx="5" fill="#8B5A3C" stroke="#3A2A1E" stroke-width="1.5"/><ellipse cx="${x}" cy="48" rx="17" ry="11" fill="#F4F1EA" stroke="#3A2A1E" stroke-width="1.5"/><ellipse cx="${x}" cy="48" rx="13" ry="8" fill="none" stroke="#E63946" stroke-width="2" stroke-dasharray="3 3"/>`).join('')}</svg>`;
+function hireTip(s, i) {
+  const p = app.S.players[s];
+  const tips = [
+    [`<p>You can't run your restaurant by yourself.</p><h2>Time to hire staff!</h2>`, 'Next'],
+    [`<h2>Click on a "staff section" to hire a server.</h2><div class="tiprow">${SECTION_PIC}<p>Each staff section can seat <b class="big">2</b> guests.</p></div>`, 'Next'],
+    [`<h2>Pay rate</h2><p>You must pay each staff person you hire $${wageOf(p)}.</p>`, 'Start']];
+  const [body, btn] = tips[i];
+  return `<div class="hover2"><div class="rcard tipcard" role="dialog" aria-label="Hiring tip ${i + 1} of 3">${body}<div class="row end"><button type="button" class="cta inline" data-act="hiretip">${btn}</button></div></div></div>`;
+}
 function buildHTML(s) {
   const S = app.S, p = S.players[s], o = other(s), k = S.waiting[s], e = S.events[s], M = CFG.market;
   const day1 = S.round === 1 && CFG.freeFood, nSec = sectionsOf(p), w = wageOf(p);
-  const look = seatLook(s);
+  const head = (h, sub) => `<div class="hhead"><div class="fh"><h1 class="funt">${h}</h1><span class="fsub">${sub}</span></div>${morningLine(s)}</div>`;
   if (!k) {
     const g = S.got[s] || {}, bits = [];
     if (e.type === 'shady' && g.choice) bits.push(g.choice === 'accept' ? 'take the shady deal' : 'say no to the shady deal');
     bits.push(p.staff.length ? `have ${plural(p.staff.length, 'bunny', 'bunnies')} on staff today` : 'run the restaurant without staff today');
-    return shell(fhead('Your staff', `You chose to ${bits.join(', and ')}.`, morningLine(s)) + `<div class="plan2">${RRService.floorPlan(p.loc, p.staff, look.animal, look.color)}</div>`,
-      waitBox(o, day1 ? 'Service starts as soon as they\'re done.' : `The Market opens as soon as they're done. It lasts ${M.time} seconds, and the fastest clicks get the food.`));
+    return `<section class="hire2">${head('Your staff', `You chose to ${bits.join(', and ')}.`)}${hireStage(s, p.staff,
+      `<b class="htitle">Waiting for ${esc(nameOf(o))}…</b><span class="hnote">${day1 ? 'Service starts as soon as they\'re done.' : `The Market opens as soon as they're done. It lasts ${M.time} seconds, and the fastest clicks get the food.`}</span>`)}</section>`;
   }
-  const f = F({ staff: p.staff.slice(), choice: null, loan: false, stage: '' }), needChoice = e && e.type === 'shady';
+  const f = F({ staff: p.staff.slice(), choice: null, loan: false, stage: '', tip: 0 }), needChoice = e && e.type === 'shady';
   if (day1 && !f.gift) return giftHTML(s);
   if (needChoice && !f.offer) return `<div class="solo2">${offerHTML(s, f)}</div>`;
   const loanOn = CFG.loan.enabled && !p.loan; // loans are off in CFG for now; this brings the option back if the team turns them on
@@ -735,19 +754,16 @@ function buildHTML(s) {
   const n = f.staff.length, fired = Math.max(0, p.staff.length - p.staff.filter(i => f.staff.includes(i)).length - f.staff.filter(i => !p.staff.includes(i)).length);
   const wages = n * w, sev = fired * CFG.staff.fire, after = round2(cash - wages - sev);
   const E = expectedDemand(p), guess = Math.max(0, Math.round(E.total)), sug = Math.min(nSec, Math.ceil(guess / CFG.service.perBunny));
-  const warn = !day1 && after < CFG.service.foodWarn ? verdict2('bad', `⚠ Only ${usd(after)} left for food at the Market.`) : '';
-  const loanCard = !loanOn ? '' : box(`${lab('Take a loan?')}<span class="fnote">Get $${CFG.loan.amount} now and pay back $${CFG.loan.repay} at the end of the game. Once per game.</span>
-    <div role="radiogroup" class="ochoices"><button type="button" class="och ${f.loan ? 'on' : ''}" role="radio" aria-checked="${!!f.loan}" data-act="loan" data-v="1"><b>Take $${CFG.loan.amount}</b><span class="d2">You'll owe $${CFG.loan.repay} at the end.</span></button>
-    <button type="button" class="och ${f.loan ? '' : 'on'}" role="radio" aria-checked="${!f.loan}" data-act="loan" data-v="0"><b>No loan</b></button></div>`);
-  const sub = day1 ? `You can't run the restaurant alone. Click a section to hire a bunny. Each bunny covers ${CFG.staff.perSection} tables.`
-    : `Your bunnies from yesterday are still here. Click a section to hire a bunny, or click a bunny to let them go ($${CFG.staff.fire} to say goodbye).`;
-  const change = needChoice ? `<div class="legend2"><span>${f.choice === 'accept' ? `You took the $${CFG.shady.cash}.` : 'You said no to the deal.'}</span> <button class="linkish quiet" data-act="stage" data-v="offer-back">Change your answer</button></div>` : '';
-  const foot = day1 ? `<div class="strip2">${plateDots(CFG.freeFood)}<span><b>${CFG.freeFood} free plates tonight.</b> Leftovers go bad at closing. From tomorrow you buy food at the Market.</span></div>` : change;
-  return shell(fhead(day1 ? 'Time to hire staff' : 'Hire staff', sub, morningLine(s)) + `<div class="plan2">${RRService.floorPlan(p.loc, f.staff, look.animal, look.color)}</div>` + foot,
-    box(`${lab('Hire staff')}${mrow('Cash now', usd(cash))}${mrow(`$${w} per bunny a day`, n ? usd(-wages) : '$0', 'dim')}${fired ? mrow(`Saying goodbye to ${plural(fired, 'bunny', 'bunnies')}`, usd(-sev), 'dim') : ''}
-      ${mrow('Expect about', plural(guess, 'guest'))}${mrow('Suggested without your help', plural(sug, 'bunny', 'bunnies'))}${mrow('Left after wages', usd(after), 'you')}${warn}
-      <span class="fnote">Wages are paid every day before you open. Hurt or not, every bunny on staff gets paid.</span>`) + loanCard,
-    `<button class="cta" data-act="invest">${day1 ? 'Done · open for service →' : 'Done · go shopping →'}</button>`);
+  const warn = !day1 && after < CFG.service.foodWarn ? `<span class="hwarn">Only ${usd(after)} left for food at the Market.</span>` : '';
+  const loan = !loanOn ? '' : `<button type="button" class="linkish" data-act="loan" data-v="${f.loan ? 0 : 1}">${f.loan ? `Loan taken: +$${CFG.loan.amount} (pay back $${CFG.loan.repay}). Undo` : `Take a $${CFG.loan.amount} loan (pay back $${CFG.loan.repay} at the end)`}</button>`;
+  const sub = day1 ? `Click a section to hire a server. Each one seats and serves ${CFG.staff.perSection} guests.`
+    : `Your staff from yesterday are still here. Click a section to hire, or click a bunny to let them go ($${CFG.staff.fire} to say goodbye).`;
+  const change = needChoice ? `<span class="hnote">${f.choice === 'accept' ? `You took the $${CFG.shady.cash}.` : 'You said no to the deal.'} <button class="linkish" data-act="stage" data-v="offer-back">Change</button></span>` : '';
+  const card = `<b class="htitle">Hire staff</b>
+    ${hrow(`$${w} per bunny a day`, n ? usd(-wages) : '$0')}${fired ? hrow(`Goodbye pay ×${fired}`, usd(-sev)) : ''}
+    ${hrow('Expect about', plural(guess, 'guest'))}${hrow('Suggested without your help', plural(sug, 'bunny', 'bunnies'))}${hrow('Left after wages', usd(after), 'you')}${warn}${change}${loan}
+    <button class="cta" data-act="invest">${day1 ? 'Open for service →' : 'Go shopping →'}</button>`;
+  return `<section class="hire2">${head(day1 ? 'Time to hire staff' : 'Hire staff', sub)}${hireStage(s, f.staff, card, day1 && f.tip < 3 ? hireTip(s, f.tip) : '')}</section>`;
 }
 // Which chef and colour each seat plays (from the key art): P1 the blue cat, P2 the pink dog
 const SEAT_LOOK = { p1: { animal: 'cat', color: '#2546F0' }, p2: { animal: 'dog', color: '#D61F69' } };
@@ -1295,6 +1311,7 @@ document.addEventListener('click', e => {
     case 'choose': { const f = F({}); f.choice = b.dataset.c; return render(); }
     case 'stage': { const f = F({}), v = b.dataset.v; if (v === 'gift') f.gift = true; else if (v === 'offer') f.offer = true; else if (v === 'offer-back') f.offer = false; return render(); }
     case 'loan': { const f = F({}); f.loan = b.dataset.v === '1'; return render(); }
+    case 'hiretip': { const f = F({}); f.tip = (f.tip || 0) + 1; return render(); }
     case 'ad': {
       const f = F({ sel: [] }), id = b.dataset.id;
       f.sel = f.sel.includes(id) ? f.sel.filter(x => x !== id) : [...f.sel, id];
