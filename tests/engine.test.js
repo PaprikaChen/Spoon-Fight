@@ -65,10 +65,16 @@ console.log(wins, reasons, { avgServed: (stats.served / stats.days).toFixed(2), 
 // Market conflicts: two players claiming the same item must never both get it
 {
   const logs = { p1: [], p2: [] };
-  for (const s of ['p1', 'p2']) logs[s].push({ k: '0:pick', loc: 'country' }, { k: '1:invest', tables: 0 }, { k: '1:market', buys: [0, 1, 2] });
+  for (const s of ['p1', 'p2']) logs[s].push({ k: '0:pick', loc: 'country' }, { k: '1:invest', tables: 0 }, { k: '1:commit', h: E.adHash({ self: [], rival: [] }, 'x'), nSelf: 0, nRival: 0 },
+    { k: '1:reveal', self: [], rival: [], salt: 'x' }, { k: '1:service', ops: [] }, { k: '1:voucher', n: 0 }, { k: '1:next' }, { k: '2:morning' }, { k: '2:invest', tables: 0 }, { k: '2:market', buys: [0, 1, 2] });
   const S = E.simulate('conflict', logs), b = S.market.bought;
+  if (S.round !== 2) { console.log('market conflict: did not reach day 2', S.round, S.phase); process.exit(1); }
   if (b.p1.items.length !== 3 || b.p2.items.length !== 0) { console.log('market conflict wrong', b); process.exit(1); }
   console.log('market conflict OK');
+  // Day 1: no Market, free food in the kitchen
+  const D = E.simulate('day1', { p1: [{ k: '0:pick', loc: 'city' }, { k: '1:invest', tables: 0 }], p2: [{ k: '0:pick', loc: 'country' }, { k: '1:invest', tables: 0 }] });
+  if (D.phase !== 'commit' || D.players.p1.ingr !== E.CFG.freeFood) { console.log('day 1 free food wrong', D.phase, D.players.p1.ingr); process.exit(1); }
+  console.log('day 1 free food OK');
 }
 // Determinism and money checks: the same logs must always give the same result, and cash has at most 2 decimals.
 {
@@ -80,4 +86,45 @@ console.log(wins, reasons, { avgServed: (stats.served / stats.days).toFixed(2), 
   if (JSON.stringify(again.result) !== JSON.stringify(S.result)) { console.log('NOT DETERMINISTIC'); process.exit(1); }
   for (const s of ['p1', 'p2']) for (const h of S.players[s].history) if (Math.abs(Math.round(h.cash * 100) - h.cash * 100) > 1e-6) { console.log('cash decimals', h.cash); process.exit(1); }
   console.log('determinism + cash OK', JSON.stringify(S.result.score.p1));
+}
+// Shady deal taken twice: the second deal must keep the original start day, so the inspector still checks
+// on the day of the second deal (before the fix, taking it again skipped that day's inspection).
+{
+  const plain = (S, s) => {
+    const k = S.waiting[s];
+    switch (S.phase) {
+      case 'pick': return { k, loc: 'country' };
+      case 'invest': return { k, tables: 0, choice: S.events[s].type === 'shady' ? 'accept' : 'decline' };
+      case 'market': return { k, buys: s === 'p1' ? [0, 2, 4] : [1, 3, 5] };
+      case 'commit': return { k, h: E.adHash({ self: [], rival: [] }, 'x'), nSelf: 0, nRival: 0 };
+      case 'reveal': return { k, self: [], rival: [], salt: 'x' };
+      case 'service': return { k, ops: [] };
+      case 'voucher': return { k, n: 0 };
+      default: return { k };
+    }
+  };
+  let tested = 0;
+  for (let i = 0; i < 400 && tested < 20; i++) {
+    const seed = 'shady' + i, deck = E.simulate(seed, { p1: [], p2: [] }).decks.p1.slice(0, E.CFG.rounds);
+    const days = deck.map((t, d) => (t === 'shady' ? d + 1 : 0)).filter(Boolean);
+    if (days.length < 2) continue;
+    const [first, second] = days;
+    const logs = { p1: [], p2: [] }; let S;
+    for (let g = 0; g < 400; g++) {
+      S = E.simulate(seed, logs);
+      if (S.phase === 'over' || (S.phase === 'service' && S.round === second)) break;
+      const s = S.waiting.p1 ? 'p1' : S.waiting.p2 ? 'p2' : null; if (!s) break;
+      logs[s].push(plain(S, s));
+    }
+    if (S.phase !== 'service' || S.round !== second) continue;                   // went broke first
+    const caught = S.players.p1.history.some(h => h.ledger.some(l => l.label === 'Inspector fine'));
+    if (caught) continue;                                                         // caught before the second offer: a fresh start is correct
+    const p = S.players.p1;
+    if (p.shadyFrom !== first) { console.log('shady: start day moved', { seed, first, second, shadyFrom: p.shadyFrom }); process.exit(1); }
+    if (!S.script.p1.inspection) { console.log('shady: no inspection on the day of the second deal', { seed, first, second }); process.exit(1); }
+    if (!p.ledger.some(l => l.label === 'Shady deal' && l.amt === E.CFG.shady.cash)) { console.log('shady: second deal not paid', { seed }); process.exit(1); }
+    tested++;
+  }
+  if (!tested) { console.log('shady: found no game with two shady deals to test'); process.exit(1); }
+  console.log(`shady deal taken twice OK (${tested} games)`);
 }
