@@ -836,9 +836,6 @@ body{transition:background-color .35s ease}
 .hover2 h2{font-family:var(--display);font-size:26px;margin:0;line-height:1.15}
 .hover2 p{margin:0;font-size:16px;font-weight:600;line-height:1.4}
 .hover2 .row.end{display:flex;justify-content:flex-end}
-.hover2 .tiprow{display:flex;align-items:center;gap:16px}
-.hover2 .tippic{width:130px;flex:none}
-.hover2 .big{font-size:30px;font-family:var(--display)}
 /* Kitchen hover note on the Staff step */
 .khover{position:absolute;z-index:3;cursor:help;border-radius:12px}
 .khover:hover,.khover:focus-within{box-shadow:inset 0 0 0 3px #FFE08A}
@@ -847,3 +844,27 @@ body{transition:background-color .35s ease}
 .kbubble .cta{padding:6px 14px;font-size:14px}
 .khover:hover .kbubble,.khover:focus-within .kbubble{display:flex}
 .khover.done .kbubble{display:none}
+/* Day-1 hiring tips: B (spotlight on a section) and D (pay rate) */
+.hover2 .tstep,.tipbub .tstep{font:700 11px var(--body);letter-spacing:.08em;text-transform:uppercase;color:#7A5A40}
+.hover2 .tfoot,.tipbub .tfoot{display:flex;justify-content:space-between;align-items:center}
+.hover2 .dots,.tipbub .dots{display:flex;gap:6px}
+.hover2 .dots i,.tipbub .dots i{width:8px;height:8px;border-radius:50%;background:#E3D3C1}
+.hover2 .dots i.on,.tipbub .dots i.on{background:#3A2A1E}
+.tiphole{position:absolute;z-index:4;appearance:none;border:0;padding:0;background:transparent;border-radius:16px;cursor:pointer;box-shadow:0 0 0 3000px rgba(30,22,18,.55);outline:3px dashed #FFE08A;outline-offset:2px}
+.tiphole:focus-visible{outline-style:solid}
+.tiphand{position:absolute;left:46%;top:44%;width:44px;filter:drop-shadow(0 2px 0 rgba(0,0,0,.3));animation:tiptap 1.2s ease-in-out infinite}
+@keyframes tiptap{50%{transform:translateY(6px) scale(.94)}}
+@media (prefers-reduced-motion:reduce){.tiphand{animation:none}}
+.tipbub{position:absolute;z-index:5;width:min(330px,40%);background:#FFF7EC;color:#3A2A1E;border-radius:18px;padding:18px 20px;box-shadow:0 6px 0 rgba(0,0,0,.28);display:flex;flex-direction:column;gap:10px}
+.tipbub:before{content:"";position:absolute;left:-12px;top:44px;border:12px solid transparent;border-left:0;border-right-color:#FFF7EC}
+.tipbub h3{font:800 21px var(--display);margin:0;line-height:1.2}
+.tipbub p{margin:0;font:500 15px var(--body);line-height:1.45}
+.hover2 .pay{max-width:500px}
+.hover2 .paygrid{display:grid;grid-template-columns:140px 1fr;gap:18px;align-items:center}
+.hover2 .tipbunbox{display:block;border-radius:14px;overflow:hidden;background:#A7D49B;line-height:0}
+.hover2 .tipbun{display:block;height:auto}
+.hover2 .paybig{font:400 60px var(--fun);line-height:.9;color:#1F7A63}
+.hover2 .paybig small{font:800 18px var(--body);color:#3A2A1E;margin-left:6px}
+.hover2 .payper{font:600 15px var(--body);color:#7A5A40;margin-top:6px}
+.hover2 .payeg{display:flex;gap:8px;align-items:center;background:#F6EDE1;border-radius:12px;padding:9px 12px;font:600 14px var(--body)}
+.hover2 .payeg span{color:#7A5A40} .hover2 .payeg b{font-weight:800}
