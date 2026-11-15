@@ -159,6 +159,7 @@ const DEFS = `<defs>
   <pattern id="grass" width="40" height="40" patternUnits="userSpaceOnUse"><rect width="40" height="40" fill="#8DB87A"/><path d="M6 12 l2 -6 l2 6 M26 30 l2 -6 l2 6 M30 8 l1.5 -5 l1.5 5" stroke="#6F9E5E" stroke-width="1.6" fill="none"/></pattern>
   <pattern id="meadow" width="48" height="48" patternUnits="userSpaceOnUse"><rect width="48" height="48" fill="#9CC283"/><path d="M6 14 l2 -6 l2 6 M30 36 l2 -6 l2 6" stroke="#7DAA67" stroke-width="1.6" fill="none"/><circle cx="38" cy="10" r="2" fill="#FFF7EC"/><circle cx="38" cy="10" r=".8" fill="#F4B740"/><circle cx="14" cy="38" r="1.8" fill="#F6B3C3"/></pattern>
   <pattern id="terrazzo" width="60" height="60" patternUnits="userSpaceOnUse"><rect width="60" height="60" fill="#E6E2DC"/><circle cx="8" cy="12" r="2.2" fill="#C9C2B8"/><circle cx="30" cy="40" r="1.6" fill="#E76F51" opacity=".55"/><circle cx="46" cy="16" r="2" fill="#7E8C9A" opacity=".6"/><circle cx="18" cy="50" r="1.4" fill="#2A9D8F" opacity=".5"/><circle cx="52" cy="48" r="2.4" fill="#C9C2B8"/></pattern>
+  <pattern id="herringL" width="40" height="40" patternUnits="userSpaceOnUse"><rect width="40" height="40" fill="#C99D72"/><path d="M0 20 L20 0 L40 20 L20 40 Z" fill="#D2A87D"/><path d="M0 20 L20 0 M20 40 L40 20 M0 0 L40 40" stroke="#B48760" stroke-width="1.4"/></pattern>
   <pattern id="herring" width="40" height="40" patternUnits="userSpaceOnUse"><rect width="40" height="40" fill="#8A5A3C"/><path d="M0 20 L20 0 L40 20 L20 40 Z" fill="#94633F"/><path d="M0 20 L20 0 M20 40 L40 20 M0 0 L40 40" stroke="#6F4630" stroke-width="1.6"/></pattern>
   <pattern id="checker" width="40" height="40" patternUnits="userSpaceOnUse"><rect width="40" height="40" fill="#EDEAE4"/><rect width="20" height="20" fill="#3D405B"/><rect x="20" y="20" width="20" height="20" fill="#3D405B"/></pattern>
   <pattern id="subway" width="40" height="20" patternUnits="userSpaceOnUse"><rect width="40" height="20" fill="#F2F4F5"/><path d="M0 10 H40 M0 20 H40 M20 0 V10 M0 10 V20 M40 10 V20" stroke="#C9D1D6" stroke-width="1.4"/></pattern>
@@ -201,6 +202,15 @@ const THEMES = {
   country2: { name: 'Countryside B · Cottage garden', loc: 'country', me: 'cat',
     note: 'Flagstone path through flower beds, hedges, lanterns and a garden arch. Inside: light pine, sage-dotted cloths, candles, hanging ivy. Kitchen: pale tile, herb pots, bread loaves.',
     floor: 'url(#woodB)', kfloor: 'url(#tile)', table: { top: 'url(#sage)', rim: '#84A98C', chair: '#C08552', candle: true } },
+  country3: { name: 'Countryside · v2', loc: 'country', me: 'cat',
+    note: 'Farmhouse inside (planks, red gingham, flower jars, chalkboard, lanterns; terracotta kitchen with copper pans). Outside: stepping stones through a wild meadow, wildflower and long-grass clumps instead of beds and hedges, wooden lantern posts, a rose arch.',
+    floor: 'url(#woodA)', kfloor: 'url(#terracotta)', table: { top: 'url(#gingham)', rim: '#E76F51', chair: '#A0673F', vase: '#9AC1D9', flower: '#F4B740', flower2: '#F28482' } },
+  city3a: { name: 'City A · v2 (teal rugs)', loc: 'city', me: 'dog', rug: '#9FD3CB', rugLine: '#FFFFFF', runner: '#5A6070', wall: '#46505E',
+    note: 'Bistro, brightened: light herringbone floor, lighter walls and runner. Staff rugs in soft teal to match the awning.',
+    floor: 'url(#herringL)', kfloor: 'url(#subway)', table: { city: true, top: '#F7F7F5', marble: true } },
+  city3b: { name: 'City A · v2 (blush rugs)', loc: 'city', me: 'dog', rug: '#F2C6C2', rugLine: '#FFFFFF', runner: '#5A6070', wall: '#46505E',
+    note: 'Same brighter bistro, with staff rugs in a soft blush that sits with the pink neon.',
+    floor: 'url(#herringL)', kfloor: 'url(#subway)', table: { city: true, top: '#F7F7F5', marble: true } },
   city1: { name: 'City A · Bistro', loc: 'city', me: 'dog',
     note: 'Street with a crosswalk, lamp posts, bike rack, hydrant and a striped awning. Inside: herringbone floor, marble tables, black bistro chairs, a pink neon sign, pendant lights. Kitchen: subway tile and steel.',
     floor: 'url(#herring)', kfloor: 'url(#subway)', table: { city: true, top: '#F7F7F5', marble: true } },
@@ -211,6 +221,8 @@ const THEMES = {
 const tileDef = `<pattern id="tile" width="34" height="34" patternUnits="userSpaceOnUse"><rect width="34" height="34" fill="#F3EDE2"/><rect x="2" y="2" width="14" height="14" rx="2" fill="#E9E0D0"/><rect x="18" y="18" width="14" height="14" rx="2" fill="#E9E0D0"/><path d="M0 17 H34 M17 0 V34" stroke="#D8CBB5" stroke-width="1.4"/></pattern>`;
 
 function outside(id) {
+  if (id === 'country3') return wildOutside();
+  id = BASE[id] || id;
   let g = '';
   if (id === 'country1') {
     g += `<rect width="${OX + 20}" height="${H}" fill="url(#meadow)"/><rect x="58" width="78" height="${H}" fill="url(#dirt)"/><path d="M58 0 V${H} M136 0 V${H}" stroke="#B89464" stroke-width="2"/>`;
@@ -256,7 +268,36 @@ function outside(id) {
   }
   return g;
 }
+const BASE = { country3: 'country1', city3a: 'city1', city3b: 'city1' };
+// a clump of long grass with a few wildflowers
+function wild(x, y, s = 1, seed = 0) {
+  const R = n => { const v = Math.sin((seed + 1) * 9301 + n * 49297) * 233280; return v - Math.floor(v); };
+  let g = `<g transform="translate(${x} ${y}) scale(${s})"><ellipse cy="2" rx="18" ry="4" fill="rgba(40,60,20,.18)"/>`;
+  for (let i = 0; i < 9; i++) { const bx = -14 + i * 3.5, h = 14 + R(i) * 16, lean = (R(i + 20) - .5) * 14; g += `<path d="M${bx} 2 Q${bx + lean / 2} ${-h / 2} ${bx + lean} ${-h}" stroke="${i % 2 ? '#5E9150' : '#79A863'}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`; }
+  const cols = ['#FFFFFF', '#F4B740', '#B392AC', '#F28482', '#8EB8D6'];
+  for (let i = 0; i < 5; i++) { const fx = -12 + R(i + 40) * 24, fy = -10 - R(i + 60) * 16, c = cols[Math.floor(R(i + 80) * cols.length)];
+    g += `<path d="M${fx} 2 L${fx} ${fy}" stroke="#5E9150" stroke-width="1.2"/>`;
+    g += c === '#FFFFFF' ? [0, 72, 144, 216, 288].map(a => `<ellipse cx="${fx + Math.cos(a * Math.PI / 180) * 2.6}" cy="${fy + Math.sin(a * Math.PI / 180) * 2.6}" rx="1.9" ry="1.9" fill="#FFFFFF" stroke="${OUT}" stroke-width=".5"/>`).join('') + `<circle cx="${fx}" cy="${fy}" r="1.5" fill="#F4B740"/>`
+      : `<circle cx="${fx}" cy="${fy}" r="2.8" fill="${c}" stroke="${OUT}" stroke-width=".7"/><circle cx="${fx}" cy="${fy}" r="1" fill="#FFF7EC" opacity=".7"/>`; }
+  return g + '</g>';
+}
+function wildOutside() {
+  let g = `<rect width="${OX + 20}" height="${H}" fill="url(#meadow)"/>`;
+  // stepping stones winding to the door
+  [[96, 588], [78, 548], [92, 508], [116, 470], [108, 430], [90, 392], [104, 354], [136, 324], [168, 300], [90, 40], [70, 80], [84, 122], [100, 164], [92, 206], [120, 246]].forEach(([x, y], i) =>
+    g += `<ellipse cx="${x}" cy="${y}" rx="${15 + (i % 3) * 2}" ry="${10 + (i % 2) * 2}" fill="#D9CFBE" stroke="#B7A98F" stroke-width="1.6"/><ellipse cx="${x - 3}" cy="${y - 2}" rx="5" ry="3" fill="#E6DDCD"/>`);
+  // wildflower and long-grass clumps where the beds and hedges were
+  [[22, 60, 1.2], [180, 70, 1.1], [24, 170, 1], [30, 250, .9], [186, 380, 1.2], [22, 360, 1.1], [26, 470, 1.2], [176, 520, 1.1], [40, 575, 1], [150, 590, .9], [160, 150, .9], [56, 420, .8]]
+    .forEach(([x, y, sc], i) => g += wild(x, y, sc, i));
+  // wooden lantern posts
+  [[194, 196], [150, 470]].forEach(([x, y]) => g += `<g transform="translate(${x} ${y})"><circle cy="-30" r="22" fill="url(#glow)"/><rect x="-3" y="-26" width="6" height="42" fill="#7A4A2A" stroke="${OUT}" stroke-width="1"/><rect x="-8" y="-42" width="16" height="16" rx="4" fill="#FFE08A" stroke="${OUT}" stroke-width="1.4"/><path d="M-9 -42 L0 -48 L9 -42 Z" fill="#7A4A2A"/></g>`);
+  // wooden arch with wild roses over the path to the door
+  g += `<path d="M140 ${AY[0] - 4} C 140 ${AY[0] - 66}, 204 ${AY[0] - 66}, 204 ${AY[0] - 4}" stroke="#7A4A2A" stroke-width="6" fill="none"/>`;
+  for (let i = 0; i < 9; i++) { const t = i / 8, x = 140 + 64 * t, y = AY[0] - 4 - Math.sin(Math.PI * t) * 48; g += `<circle cx="${x}" cy="${y}" r="5" fill="#5E9150"/><circle cx="${x + 2}" cy="${y - 2}" r="3.2" fill="${i % 2 ? '#F28482' : '#FFFFFF'}" stroke="${OUT}" stroke-width=".7"/>`; }
+  return g;
+}
 function interiorDecor(id) {
+  id = BASE[id] || id;
   let g = '';
   if (id === 'country1') {
     // chalkboard menu by the door, barrels, plants in corners, hanging lanterns over the aisle
@@ -278,6 +319,7 @@ function interiorDecor(id) {
   return g;
 }
 function kitchen(id, plates) {
+  id = BASE[id] || id;
   let k = `<text x="${SC}" y="${RY + 34}" text-anchor="middle" font-size="13" font-weight="800" letter-spacing="2" fill="#7A5A40">KITCHEN</text>`;
   const city = id.startsWith('city');
   const counter = city ? '#C9D1D6' : '#B08D6E', counterIn = city ? '#E6EBEE' : '#D9C3A5';
@@ -291,7 +333,7 @@ function kitchen(id, plates) {
   k += `<g transform="translate(${SXs + 160} ${SY})"><rect x="-24" y="-10" width="48" height="20" rx="10" fill="#E76F51" stroke="${OUT}" stroke-width="1.2"/><text y="4" text-anchor="middle" font-size="10" font-weight="800" fill="#FFF7EC">RUSH</text></g>`;
   // decor
   if (id === 'country1') {
-    for (let i = 0; i < 4; i++) k += `<g transform="translate(${KR - 110 + i * 22} ${RY + 6})"><path d="M0 0 V10" stroke="${OUT}" stroke-width="1"/><circle cy="18" r="9" fill="#C27A4A" stroke="${OUT}" stroke-width="1.3"/><rect x="-1.5" y="6" width="3" height="5" fill="#7A4A2A"/></g>`;
+    for (let i = 0; i < 4; i++) k += `<g transform="translate(${KR - 96 + i * 20} ${RY + 6})"><path d="M0 0 V10" stroke="${OUT}" stroke-width="1"/><circle cy="18" r="9" fill="#C27A4A" stroke="${OUT}" stroke-width="1.3"/><rect x="-1.5" y="6" width="3" height="5" fill="#7A4A2A"/></g>`;
     k += `<g transform="translate(${KX + 52} ${SY + 140})"><rect x="-26" y="-14" width="52" height="30" rx="5" fill="#A0673F" stroke="${OUT}" stroke-width="1.5"/><path d="M-26 0 h52" stroke="#7A4A2A" stroke-width="2"/><circle cx="-14" cy="-14" r="7" fill="#E63946" stroke="${OUT}" stroke-width="1"/><circle cx="0" cy="-16" r="6" fill="#84A98C" stroke="${OUT}" stroke-width="1"/><path d="M12 -12 l6 -10 l4 2 Z" fill="#F4A261" stroke="${OUT}" stroke-width="1"/></g>`;
     k += `<g transform="translate(${KX + 40} ${RY + RH - 40})"><path d="M-16 20 C-22 -4 -16 -18 0 -18 C16 -18 22 -4 16 20 Z" fill="#E9DFD3" stroke="${OUT}" stroke-width="1.5"/><text y="6" text-anchor="middle" font-size="9" font-weight="900" fill="#7A5A40">FLOUR</text></g>`;
   } else if (id === 'country2') {
@@ -316,9 +358,9 @@ function scene(id) {
   g += outside(id);
   // room
   g += `<rect x="${RX}" y="${RY}" width="${RW}" height="${RH}" rx="12" fill="${T.floor}"/><rect x="${KX}" y="${RY}" width="${KR - KX}" height="${RH}" fill="${T.kfloor}"/>`;
-  const runner = city ? (id === 'city1' ? '#2A2A30' : '#2A9D8F') : (id === 'country1' ? '#B5523B' : '#84A98C');
+  const runner = T.runner || (city ? (id === 'city1' ? '#2A2A30' : '#2A9D8F') : (id === 'country1' || id === 'country3' ? '#B5523B' : '#84A98C'));
   g += `<rect x="${RX}" y="${AY[0] + 6}" width="${KX - RX}" height="${AY[1] - AY[0] - 12}" fill="${runner}"/><rect x="${RX}" y="${AY[0] + 12}" width="${KX - RX}" height="${AY[1] - AY[0] - 24}" fill="none" stroke="${city ? '#F4B740' : '#FFF7EC'}" stroke-width="2" stroke-dasharray="10 6" opacity=".8"/>`;
-  const wall = city ? '#2E3440' : '#5B4636';
+  const wall = T.wall || (city ? '#2E3440' : '#5B4636');
   g += `<rect x="${RX}" y="${RY}" width="${RW}" height="${RH}" rx="12" fill="none" stroke="${wall}" stroke-width="12"/><path d="M${KX} ${RY} V${AY[0]} M${KX} ${AY[1]} V${RY + RH}" stroke="${wall}" stroke-width="10"/>`;
   g += `<rect x="${RX - 8}" y="${AY[0]}" width="16" height="${AY[1] - AY[0]}" fill="${runner}"/><rect x="${KX - 6}" y="${AY[0]}" width="12" height="${AY[1] - AY[0]}" fill="${runner}"/>`;
   // windows in the outer wall
@@ -331,7 +373,7 @@ function scene(id) {
   const sideTint = city ? 'rgba(20,24,30,.18)' : 'rgba(58,42,30,.12)';
   for (let r = 0; r < 2; r++) for (let c = 0; c < cols; c++) {
     const i = r * cols + c, x = FX0 + c * (secW + gap), y = rowY[r], on = staffed.includes(i);
-    if (on) g += `<rect x="${x}" y="${y}" width="${secW}" height="${secH}" rx="16" fill="#A9C79F" stroke="${OUT}" stroke-width="1.6"/><rect x="${x + 7}" y="${y + 7}" width="${secW - 14}" height="${secH - 14}" rx="11" fill="none" stroke="#FFF7EC" stroke-width="2" stroke-dasharray="7 5" opacity=".75"/>`;
+    if (on) g += `<rect x="${x}" y="${y}" width="${secW}" height="${secH}" rx="16" fill="${T.rug || '#A9C79F'}" stroke="${OUT}" stroke-width="1.6"/><rect x="${x + 7}" y="${y + 7}" width="${secW - 14}" height="${secH - 14}" rx="11" fill="none" stroke="${T.rugLine || '#FFF7EC'}" stroke-width="2" stroke-dasharray="7 5" opacity=".75"/>`;
     else g += `<rect x="${x}" y="${y}" width="${secW}" height="${secH}" rx="16" fill="${sideTint}" stroke="${city ? '#55606B' : '#7A5A40'}" stroke-width="2" stroke-dasharray="8 6"/>`;
     for (let t = 0; t < 2; t++) { const idx = i * 2 + t; g += table(x + secW * (t ? .72 : .28), y + 92, T.table, seated.includes(idx), idx, adSeat.includes(idx) ? MC : '#B8A99A'); }
     if (on) g += at(x + secW / 2, y + secH - 18, 1, bunny(FACE, true));
