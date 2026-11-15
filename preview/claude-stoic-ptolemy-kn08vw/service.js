@@ -905,5 +905,7 @@ const sectionCount = loc => (loc === 'country' ? 10 : 8);
 const buildBox = `left:${(KX / W * 100 + 0.8).toFixed(2)}%;top:${((SY + 138) / H * 100).toFixed(2)}%;width:${((KR - KX) / W * 100 - 1.6).toFixed(2)}%;height:${((RY + RH - SY - 138) / H * 100 - 1.5).toFixed(2)}%`;
 // The kitchen above that panel: hovering it explains that you, the owner, work there
 const kitchenBox = `left:${(KX / W * 100).toFixed(2)}%;top:${(RY / H * 100).toFixed(2)}%;width:${((KR - KX) / W * 100).toFixed(2)}%;height:${((SY + 130 - RY) / H * 100).toFixed(2)}%`;
-window.RRService = { create, floorPlan, sectionCount, buildBox, kitchenBox };
+// One section's rectangle on the plan (for tutorial spotlights and cropped pictures)
+function sectionRect(loc, i) { const sc = sceneParts(loc, new Set(), 'build', 'cat', '#000').sections[i]; return { x: sc.x, y: sc.y, w: sc.w, h: sc.h, W, H }; }
+window.RRService = { create, floorPlan, sectionCount, buildBox, kitchenBox, sectionRect };
 })();
