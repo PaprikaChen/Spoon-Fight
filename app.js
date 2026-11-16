@@ -574,7 +574,7 @@ function lobbyHTML() {
       <button class="linkish quiet" data-act="local">Practice alone</button>`;
   } else {
     col = `<div class="shead"><span class="eyebrow">The Golden Spoon final · ${CFG.rounds} days · $${CFG.startCash}</span>
-        <h1 class="funh">Two restaurants. Five days. One winner.</h1><p class="lede">Run your own restaurant, and make more money than your rival to win the Golden Spoon.</p></div>
+        <h1 class="funh">You used to cook together.</h1><p class="lede">Now you are competing for the Golden Spoon. Run your own restaurant and make more money than your rival to win.</p></div>
       ${note}${name('e.g. Sam')}${err}
       <button class="cta bigc" data-act="create" ${ok ? '' : 'disabled'}>${app.busy ? 'Making a room…' : 'Create a room'}</button>
       ${join('Got a code from your old partner?')}
