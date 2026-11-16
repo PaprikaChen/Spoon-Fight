@@ -559,7 +559,7 @@ function lobbyHTML() {
   if (app.invite) {
     const v = app.invite;
     col = `<div class="shead"><div class="inv"><span class="av rival">${initial(v.name || 'P')}</span><span>Your old partner ${v.name ? `<b>${esc(v.name)}</b> ` : ''}made the final too</span></div>
-        <h1 class="funh">Two restaurants. Five days. One winner.</h1><span class="smuted">The Golden Spoon final · Room ${esc(v.code)} · they're waiting</span></div>
+        <h1 class="funh">You used to cook together.</h1><p class="lede">Now you are competing for the Golden Spoon. Run your own restaurant and make more money than your rival to win.</p><span class="smuted">The Golden Spoon final · Room ${esc(v.code)} · they're waiting</span></div>
       ${note}${name('Type a name your rival will see')}${err}
       <button class="cta bigc" data-act="joininvite" ${ok ? '' : 'disabled'}>${app.busy ? 'Joining…' : 'Join the game'}</button>
       <button class="linkish quiet" data-act="noinvite">Not now, start my own game</button>`;
