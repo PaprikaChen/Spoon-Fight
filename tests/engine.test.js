@@ -14,7 +14,7 @@ function bot(S, seat, rnd, priv) {
     case 'market': {
       // Random items; sometimes both bots claim the same one (the engine must sort it out)
       const buys = [];
-      for (let i = 0; i < E.CFG.market.stock; i++) if (rnd() < 0.35) buys.push(i);
+      for (let i = 0; i < E.CFG.market.stock; i++) if (rnd() < 0.15) buys.push(i);
       return { k, buys };
     }
     case 'commit': {
@@ -81,10 +81,19 @@ console.log(wins, reasons, { avgServed: (stats.served / stats.days).toFixed(2), 
   if (D.players.p1.staff.join() !== '0,1' || D.players.p1.cash !== E.CFG.startCash - L.open - L.rent - 2 * w) { console.log('day 1 hiring wrong', D.players.p1.staff, D.players.p1.cash); process.exit(1); }
   console.log('day 1 free food + hiring OK');
   // Letting a bunny go costs severance; days 1-2 have no Ads step, day 3 does
-  const H = { p1: [{ k: '0:pick', loc: 'country' }, { k: '1:invest', staff: [0, 1, 2] }, { k: '1:service', res: {} }, { k: '1:voucher', n: 0 }, { k: '1:next' }, { k: '2:morning' }, { k: '2:invest', staff: [2] }],
+  const H = { p1: [{ k: '0:pick', loc: 'country' }, { k: '1:invest', staff: [0, 1, 2] }, { k: '1:service', res: {} }, { k: '1:voucher', n: 0 }, { k: '1:next' }, { k: '2:morning' }, { k: '2:invest', staff: [1, 2] }],
     p2: [{ k: '0:pick', loc: 'country' }, { k: '1:invest', staff: [] }, { k: '1:service', res: {} }, { k: '1:voucher', n: 0 }, { k: '1:next' }, { k: '2:morning' }, { k: '2:invest', staff: [] }] };
   const S2 = E.simulate('fire', H), led = S2.players.p1.ledger;
-  if (!led.some(l => l.label === 'Severance ×2' && l.amt === -2 * E.CFG.staff.fire) || !led.some(l => l.label === 'Wages ×1')) { console.log('severance wrong', led); process.exit(1); }
+  const pre = E.simulate('fire', { p1: H.p1.slice(0, -1), p2: H.p2.slice(0, -1) }).players.p1;
+  if (!led.some(l => l.label === 'Severance ×1' && l.amt === -E.severance(pre, 1)) || !led.some(l => l.label === 'Wages ×2')) { console.log('severance wrong', led, E.severance(pre, 1)); process.exit(1); }
+  // Goodbye pay you can't afford (2 of 3 bunnies: more than your cash) keeps the bunnies you can't pay to let go
+  const H2 = { p1: H.p1.slice(0, -1).concat({ k: '2:invest', staff: [2] }), p2: H.p2 };
+  const tooMuch = E.simulate('fire', H2).players.p1;
+  if (E.severance(pre, 2) <= pre.cash || tooMuch.staff.length !== 2 || tooMuch.cash < 0) { console.log('unaffordable severance wrong', E.severance(pre, 2), pre.cash, tooMuch.staff, tooMuch.cash); process.exit(1); }
+  // The team's worked examples (playtest Nov 15): $6 pay, net worth $245
+  const team = n => ({ loc: 'country', stars: 0, cash: 245, staff: [...Array(n).keys()] });
+  const ex = [[team(7), 1, 24.5], [team(7), 2, 53.9], [team(15), 1, 10.5]];
+  for (const [tp, k, want] of ex) if (E.severance(tp, k) !== want) { console.log('severance formula wrong', tp.staff.length, k, E.severance(tp, k), 'want', want); process.exit(1); }
   for (const s of ['p1', 'p2']) H[s].push({ k: '2:market', buys: [] }, { k: '2:service', res: {} }, { k: '2:voucher', n: 0 }, { k: '2:next' }, { k: '3:morning' });
   const S3 = E.simulate('fire', H);
   if (S2.phase !== 'market' || S3.round !== 3 || S3.phase !== 'commit') { console.log('ads day wrong', S2.phase, S3.round, S3.phase); process.exit(1); }
@@ -145,4 +154,35 @@ console.log(wins, reasons, { avgServed: (stats.served / stats.days).toFixed(2), 
   }
   if (!tested) { console.log('shady: found no game with two shady deals to test'); process.exit(1); }
   console.log(`shady deal taken twice OK (${tested} games)`);
+}
+
+// Playtest Nov 15 rules: rush = half the meal price, stars pay out every day, the market is a grid of 24 bundles
+{
+  const C = E.CFG;
+  // Rush plates: half of what the guest pays (Countryside $5, City $6), +$3 with the rival's corner card
+  if (E.rushBase({ loc: 'country' }) !== 5 || E.rushBase({ loc: 'city' }) !== 6) { console.log('rush price wrong', E.rushBase({ loc: 'country' }), E.rushBase({ loc: 'city' })); process.exit(1); }
+  const fake = { players: { p1: { loc: 'city' } }, script: { p1: { cornered: true } } };
+  if (E.opPrice(fake, 'p1', 0) !== 6 + C.ads.corner.extra) { console.log('cornered rush price wrong', E.opPrice(fake, 'p1', 0)); process.exit(1); }
+  // Bundles: the team's sizes, 24 in all, in different spots on different days; the last day is all Express
+  const sizes = items => items.filter(it => it.t === 'reg').map(it => it.n).sort((x, y) => y - x).join() + '|' + items.filter(it => it.t === 'exp').map(it => it.n).sort((x, y) => y - x).join();
+  const d2 = E.marketItems('bund', 2), d3 = E.marketItems('bund', 3), d5 = E.marketItems('bund', C.rounds);
+  if (d2.length !== 24 || sizes(d2) !== '10,7,5,5,3,3,3,2,2,2,2,2|9,6,4,4,2,2,2,1,1,1,1,1') { console.log('bundles wrong', sizes(d2)); process.exit(1); }
+  if (JSON.stringify(d2) === JSON.stringify(d3)) { console.log('bundles are in the same spots two days running'); process.exit(1); }
+  if (d5.length !== 24 || d5.some(it => it.t !== 'exp')) { console.log('last day should be all Express', d5); process.exit(1); }
+  // Buying a bundle: plates × price per plate, and all its plates arrive together
+  const L = { p1: [{ k: '0:pick', loc: 'country' }, { k: '1:invest', staff: [] }, { k: '1:service', res: {} }, { k: '1:voucher', n: 0 }, { k: '1:next' }, { k: '2:morning' }, { k: '2:invest', staff: [] }],
+    p2: [{ k: '0:pick', loc: 'country' }, { k: '1:invest', staff: [] }, { k: '1:service', res: {} }, { k: '1:voucher', n: 0 }, { k: '1:next' }, { k: '2:morning' }, { k: '2:invest', staff: [] }] };
+  const before = E.simulate('bund', L), items = before.market.items, big = items.findIndex(it => it.t === 'exp' && it.n === 9);
+  L.p1.push({ k: '2:market', buys: [big] }); L.p2.push({ k: '2:market', buys: [] });
+  const after = E.simulate('bund', L), b = after.market.bought.p1;
+  if (b.exp !== 9 || b.spent !== 9 * C.market.exp.price || after.players.p1.cash !== before.players.p1.cash - 9 * C.market.exp.price) { console.log('bundle purchase wrong', b, before.players.p1.cash, after.players.p1.cash); process.exit(1); }
+  // Stars pay out at the end of every day: a "Stars ×n" line worth n × starValue in each day's ledger
+  const logs = { p1: [], p2: [] }, priv = {}, rnd = (() => { let x = 7; return () => (x = (x * 16807) % 2147483647) / 2147483647; })();
+  let S;
+  for (let g = 0; g < 400; g++) { S = E.simulate('stars', logs); if (S.phase === 'over') break; for (const s of ['p1', 'p2']) if (S.waiting[s]) { logs[s].push(bot(S, s, rnd, priv)); break; } }
+  for (const s of ['p1', 'p2']) for (const h of S.players[s].history) {
+    const line = h.ledger.find(l => /^Stars ×\d$/.test(l.label));
+    if (!line || line.amt !== h.stars * C.starValue) { console.log('daily star pay wrong', s, h.round, h.stars, line); process.exit(1); }
+  }
+  console.log('rush price + bundles + daily star pay OK');
 }

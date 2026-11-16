@@ -27,7 +27,7 @@ window.__shot = (() => {
       case 'invest': return { k, staff: opt.staff || [0, 2, 5], choice: opt.choice || 'decline' };
       case 'market': {
         const want = opt.food != null ? opt.food : 4, buys = [];
-        S.market.items.forEach((t, i) => { if (buys.length < want && (i % 2 === (s === 'p1' ? 0 : 1))) buys.push(i); });
+        S.market.items.forEach((it, i) => { if (buys.length < want && (i % 2 === (s === 'p1' ? 0 : 1))) buys.push(i); });
         return { k, buys };
       }
       case 'commit': {
@@ -75,7 +75,7 @@ window.__shot = (() => {
     if (extra.market) {
       const now = Date.now(), items = S.market.items;
       a.mkt = { key: `shot:${g.seed}:${S.round}`, owner: extra.market.owner, start: extra.market.elapsed == null ? null : now - extra.market.elapsed * 1000, ready: extra.market.ready || {}, mine: {} };
-      if (extra.market.cooling != null) { const i = extra.market.cooling; a.cool[view] = { i, type: items[i], start: now - 1000, until: now + CFG.market[items[i]].cd * 1000 - 1000 }; }
+      if (extra.market.cooling != null) { const i = extra.market.cooling; a.cool[view] = { i, type: items[i].t, start: now - 1000, until: now + CFG.market[items[i].t].cd * 1000 - 1000 }; }
     }
     if (extra.svc) a.svc[view] = { key: `shot:${g.seed}:${S.round}:${view}`, started: true, flip: 0, ...extra.svc };
     window.__RR_SVC_FAST = extra.fast || 1;

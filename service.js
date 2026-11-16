@@ -680,7 +680,7 @@ function create(host, opts) {
   const colName = MC === '#D61F69' ? 'Pink' : 'Blue';
   const TOUR1 = [
     { text: 'This is you, the chef.', spot: () => ({ c: [S.chef.x, S.chef.y - 50, 70] }), at: () => [S.chef.x, S.chef.y - 120] },
-    { need: 'staff', text: 'Bunnies seat and serve their rug.', spot: () => { const s = sections.find(s => s.on); return s ? { r: [s.x - 6, s.y - 6, s.w + 12, s.h + 12] } : null; }, at: () => { const s = sections.find(s => s.on); return s ? [s.x + s.w / 2, s.y + s.h + 4] : [W / 2, H / 2]; }, below: true },
+    { need: 'staff', text: 'Each bunny seats and serves the guests in its own section.', spot: () => { const s = sections.find(s => s.on); return s ? { r: [s.x - 6, s.y - 6, s.w + 12, s.h + 12] } : null; }, at: () => { const s = sections.find(s => s.on); return s ? [s.x + s.w / 2, s.y + s.h + 4] : [W / 2, H / 2]; }, below: true },
     { need: 'nostaff', text: 'No staff? Those tables are yours.', spot: () => { const s = sections.filter(s => !s.on).pop(); return s ? { r: [s.x - 6, s.y - 6, s.w + 12, s.h + 12] } : null; }, at: () => { const s = sections.filter(s => !s.on).pop(); return s ? [s.x + s.w / 2, s.y - 8] : [W / 2, H / 2]; } },
     { text: 'Out of food? Make a rush dish here.', spot: () => ({ r: [SXs - 12, SY - 12, 184, 102] }), at: () => [SC, SY + 96], below: true },
     { text: 'Try one now. This one is free!', done: 'Nice! That plate is yours.', practice: true, spot: () => ({ r: [KX + 16, SY - 12, KR - KX - 32, 250] }), at: () => [SC, SY - 20], last: true }

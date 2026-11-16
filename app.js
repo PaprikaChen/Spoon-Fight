@@ -352,16 +352,16 @@ const mktTimeLeft = () => (app.mkt && app.mkt.start ? CFG.market.time * 1000 - (
 const ownedBy = s => Object.keys(app.mkt ? app.mkt.owner : {}).filter(i => app.mkt.owner[i] === s).map(Number).sort((a, b) => a - b);
 function mktCashLeft(s) {
   const S = app.S, items = S.market.items;
-  return S.players[s].cash - adReserve(s) - ownedBy(s).reduce((a, i) => a + CFG.market[items[i]].price, 0);
+  return S.players[s].cash - adReserve(s) - ownedBy(s).reduce((a, i) => a + itemPrice(items[i]), 0);
 }
 async function claimItem(s, i) {
-  const S = app.S, M = CFG.market, type = S.market.items[i], k = S.waiting[s];
+  const S = app.S, M = CFG.market, it = S.market.items[i], type = it.t, k = S.waiting[s];
   if (!k || app.claiming[s] || !mktOpen()) return;
   const c = app.cool[s];
   if (c && Date.now() < c.until) { const el = document.querySelector('.strip'); if (el) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); } return toast('Wait for your delivery to finish first.'); }
   if (app.mkt.owner[i]) return toast(app.mkt.owner[i] === s ? 'You already have that one.' : `Too slow! ${nameOf(app.mkt.owner[i])} got that one.`);
   if (mktTimeLeft() <= 0) return;
-  if (mktCashLeft(s) < M[type].price) return toast("Not enough cash for this one.");
+  if (mktCashLeft(s) < itemPrice(it)) return toast(`Not enough cash for this bundle ($${itemPrice(it)}).`);
   app.claiming[s] = true;
   try {
     if (app.mode === 'online') {
@@ -471,7 +471,7 @@ const INTRO = [
 const GOAL_PAGES = [
   { chip: 'YOUR GOAL', cap: 'Win the Golden Spoon competition.', sub: () => 'Then you get the keys and <b>re-open the Two Spoons restaurant.</b>' },
   { chip: 'HOW TO WIN', cap: `Earn the most money in ${CFG.rounds} days.`, sub: () => `Whoever has more at the end of day ${CFG.rounds} wins.` },
-  { chip: 'STARS', cap: 'Star ratings can increase your money.', sub: () => `Each star adds a <b>$${CFG.starValue} bonus</b> at the end of ${CFG.rounds} days.` },
+  { chip: 'STARS', cap: 'Star ratings can increase your money.', sub: () => `Each star pays you <b>$${CFG.starValue} every night</b>, and adds a <b>$${CFG.starValue} bonus</b> at the end of ${CFG.rounds} days.` },
   { chip: 'REMEMBER!', cap: 'Your rival is also trying to win!', sub: () => 'Watch what they do, and look out for tricks. You can play tricks too… <b>May the best restaurateur win!</b>' }];
 const INTRO_ALL = () => INTRO.length + GOAL_PAGES.length;
 const plural = (n, one, many) => `${n} ${n === 1 ? one : (many || one + 's')}`;
@@ -534,7 +534,7 @@ function renderBar() {
       const s = viewer(), o = other(s), p = S.players[s], q = S.players[o];
       mid = progressHTML(S);
       pills = `<div class="pill you"><b>${app.mode === 'online' ? 'You' : esc(nameOf(s))}</b><span class="num">${usd(liveCash(s))}</span>${miniStars(p.stars, 'you')}</div>
-        <div class="pill rival"><b>${esc(nameOf(o))}</b><span class="num" title="Cash at the end of their last day">${usd(rivalCash(o))}</span>${miniStars(q.stars, 'rival')}<span class="st">${themStatus(o)}</span></div>`;
+        <div class="pill rival"><b>${esc(nameOf(o))}</b>${q.loc ? `<span class="loc" title="Their restaurant">${restName(q.loc)}</span>` : ''}<span class="num" title="Cash at the end of their last day">${usd(rivalCash(o))}</span>${miniStars(q.stars, 'rival')}<span class="st">${themStatus(o)}</span></div>`;
     }
   }
   let tools = '';
@@ -559,7 +559,7 @@ function lobbyHTML() {
   if (app.invite) {
     const v = app.invite;
     col = `<div class="shead"><div class="inv"><span class="av rival">${initial(v.name || 'P')}</span><span>Your old partner ${v.name ? `<b>${esc(v.name)}</b> ` : ''}made the final too</span></div>
-        <h1 class="funh">Only one of you gets the Two Spoons back.</h1><span class="smuted">The Golden Spoon final · Room ${esc(v.code)} · they're waiting</span></div>
+        <h1 class="funh">Two restaurants. Five days. One winner.</h1><span class="smuted">The Golden Spoon final · Room ${esc(v.code)} · they're waiting</span></div>
       ${note}${name('Type a name your rival will see')}${err}
       <button class="cta bigc" data-act="joininvite" ${ok ? '' : 'disabled'}>${app.busy ? 'Joining…' : 'Join the game'}</button>
       <button class="linkish quiet" data-act="noinvite">Not now, start my own game</button>`;
@@ -574,7 +574,7 @@ function lobbyHTML() {
       <button class="linkish quiet" data-act="local">Practice alone</button>`;
   } else {
     col = `<div class="shead"><span class="eyebrow">The Golden Spoon final · ${CFG.rounds} days · $${CFG.startCash}</span>
-        <h1 class="funh">You used to cook together.</h1><p class="lede">Now only one of you gets the Two Spoons back.</p></div>
+        <h1 class="funh">Two restaurants. Five days. One winner.</h1><p class="lede">Run your own restaurant, and make more money than your rival to win the Golden Spoon.</p></div>
       ${note}${name('e.g. Sam')}${err}
       <button class="cta bigc" data-act="create" ${ok ? '' : 'disabled'}>${app.busy ? 'Making a room…' : 'Create a room'}</button>
       ${join('Got a code from your old partner?')}
@@ -617,15 +617,15 @@ function howtoHTML() {
         <tr><td>Tables</td><td>${L.country.tables}</td><td>${L.city.tables}</td></tr><tr><td>Each bunny costs a day</td><td>$${C.staff.wage.country}</td><td>$${C.staff.wage.city}</td></tr><tr><td>Each guest pays</td><td><b>$${L.country.price}</b></td><td><b>$${L.city.price}</b></td></tr></tbody></table>
         <p><b>Watch your rent.</b> It's paid every morning. If you can't pay it, you're out of the game.</p>`)}
       ${sec('day', 'A day, step by step', 'What you do in each of the 5 steps', `<ol class="steps">
-        <li><b>Staff</b><br>Hire bunnies. Each one seats and serves the ${C.staff.perSection} tables on its rug. Wages are paid every morning before you open, and bunnies stay until you let them go ($${C.staff.fire} to say goodbye).</li>
-        <li><b>Market</b><br>You both shop at once for ${C.market.time} seconds. Whoever clicks first gets the food. <b>Express</b> ($${C.market.exp.price}) arrives today. <b>Regular</b> ($${C.market.reg.price}) is cheaper, but might not arrive until tomorrow. On the last day there's only Express.</li>
+        <li><b>Staff</b><br>Hire bunnies. Each one seats and serves the ${C.staff.perSection} tables in its own section. Wages are paid every morning before you open, and bunnies stay until you let them go. Letting one go costs goodbye pay: more when your restaurant is worth more, and more for each bunny you let go, because the rest have to work harder.</li>
+        <li><b>Market</b><br>You both shop at once for ${C.market.time} seconds, racing for the same ${C.market.stock} food bundles. Each bundle makes 1 to ${Math.max(...C.market.bundles.reg, ...C.market.bundles.exp)} plates. Whoever clicks first gets it. <b>Express</b> ($${C.market.exp.price} a plate) arrives today. <b>Regular</b> ($${C.market.reg.price} a plate) is cheaper, but might not arrive until tomorrow. On the last day there's only Express.</li>
         <li><b>Ads</b> (from day ${C.adsFrom}, first thing in the morning)<br>Buy ads that bring you guests, or that cause trouble for your rival. You see what your own ads do right away; you only learn what your rival's ads do to you right before the doors open. Ads are paid then too.</li>
-        <li><b>Service</b><br>Guests walk in for ${Math.round(C.service.live.dayLen / 60)} minutes. Your bunnies look after their own tables. You are the chef: click a guest at the door to seat them, click a seated guest to bring a plate. Out of plates? Click the stove to rush one ($${C.service.rush[0]}–${C.service.rush[1]}). Guests wait about ${C.service.live.qPat} seconds before they leave unhappy.</li>
+        <li><b>Service</b><br>Guests walk in for ${Math.round(C.service.live.dayLen / 60)} minutes. Your bunnies look after their own tables. You are the chef: click a guest at the door to seat them, click a seated guest to bring a plate. Out of plates? Click the stove to rush one: it costs half of what the guest pays ($${rushBase({ loc: 'country' })} in the Countryside, $${rushBase({ loc: 'city' })} in the City), so you earn less, but you keep your stars. Guests wait about ${C.service.live.qPat} seconds before they leave unhappy.</li>
         <li><b>Recap</b><br>See what you earned, what you spent and how your stars changed. Leftover food goes bad overnight.</li></ol>`)}
       ${sec('stars', 'Stars', 'How to earn them and how to lose them', `<p>You start with ${C.startStars} stars. They change at the end of each day.</p>
         <ul><li><b>You gain a star</b> when nobody left unhappy.</li><li><b>You lose stars</b> when guests leave unhappy: 1 star for 1 to 3 guests, 2 stars for 4 or more.</li></ul>
         <p><b>Saying sorry helps.</b> After service you can give each guest you turned away a $${C.voucher} voucher, so they don't count against you.</p>
-        <p><b>Why stars matter.</b> More stars bring extra guests. Fewer stars mean some regulars stay home. At the end of the game, each star is worth $${C.starValue}.</p>`)}
+        <p><b>Why stars matter.</b> More stars bring extra guests. Fewer stars mean some regulars stay home. Each star also pays you $${C.starValue} at the end of every day, and counts $${C.starValue} again in the final score.</p>`)}
       ${sec('surprises', 'Surprises', 'Secret offers, and things that happen during service', `<p><b>Secret offers.</b> Some mornings you get an offer only you can see:</p>
         <ul><li><b>A shady deal:</b> take $${C.shady.cash} now. But on every day after, there's a 1 in 6 chance an inspector catches you. If that happens you pay $${C.shady.fine} and lose a star.</li></ul>
         <p><b>During service.</b> A fight (${C.service.fightStaff} bunnies get hurt and go home for the day, still paid), a storm, a proposal, someone asking for free food. A pop-up explains it and the clock stops while you decide.</p>
@@ -772,8 +772,8 @@ function offerHTML(s, f) {
   {
     const active = p.shadyFrom !== null;
     h = active ? `The stranger is back with another $${CFG.shady.cash}` : `A stranger offers you $${CFG.shady.cash}`;
-    sub = active ? `You already took a deal on day ${p.shadyFrom}, so the inspector is already watching you (1 in 6 each day). Taking this one doesn't change that chance.`
-      : 'Easy money for a shady deal. But someone might find out.';
+    sub = active ? `Same deal as before: cheap food with no health papers. You already took one on day ${p.shadyFrom}, so the inspector is already watching you (1 in 6 each day). Taking this one doesn't change that chance.`
+      : "They want you to take a delivery of cheap food that has no health papers, and keep quiet about it. That's against the rules: if a health inspector finds out, you pay a fine and lose a star.";
     opts = opt('accept', `Take the $${CFG.shady.cash}`, [`Now: <b class="pos">+$${CFG.shady.cash}</b>`, `Every day after: 1 in 6 chance an inspector catches you: <b class="neg">−$${CFG.shady.fine} and −1 star</b>`])
       + opt('decline', 'Say no', ['Nothing happens']);
     go = f.choice === 'accept' ? 'Take the money · set up →' : 'Say no · set up →';
@@ -843,16 +843,20 @@ function buildHTML(s) {
   const reserved = adReserve(s), mine = myCards(s);
   const cash = p.cash - reserved + (f.choice === 'accept' ? CFG.shady.cash : 0) + (loanOn && f.loan ? CFG.loan.amount : 0);
   const n = f.staff.length, fired = Math.max(0, p.staff.length - p.staff.filter(i => f.staff.includes(i)).length - f.staff.filter(i => !p.staff.includes(i)).length);
-  const wages = n * w, sev = fired * CFG.staff.fire, after = round2(cash - wages - sev);
+  // Goodbye pay follows the team's rule (CFG.staff.fire): bigger when the restaurant is worth more, and for each bunny fewer.
+  // It's worked out from the cash at this moment, the same as the engine does.
+  const cashNow = cash + reserved, sev = severance(p, fired, cashNow), wages = n * w, after = round2(cash - wages - sev);
+  const keptOld = p.staff.filter(i => f.staff.includes(i)).length, nextSev = !day1 && keptOld > 0 ? round2(severance(p, fired + 1, cashNow) - sev) : 0;
   const E = expectedDemand(p, S.round >= CFG.adsFrom && mine ? mine.self : []), guess = Math.max(0, Math.round(E.total)), sug = Math.min(nSec, Math.ceil(guess / CFG.service.perBunny));
   const warn = !day1 && after < CFG.service.foodWarn ? `<span class="hwarn">Only ${usd(after)} left for food at the Market.</span>` : '';
   const loan = !loanOn ? '' : `<button type="button" class="linkish" data-act="loan" data-v="${f.loan ? 0 : 1}">${f.loan ? `Loan taken: +$${CFG.loan.amount} (pay back $${CFG.loan.repay}). Undo` : `Take a $${CFG.loan.amount} loan (pay back $${CFG.loan.repay} at the end)`}</button>`;
   const sub = day1 ? `Click a section to hire a server. Each server looks after the ${CFG.staff.perSection} tables in their section.`
-    : `Your staff from yesterday are still here. Click a section to hire, or click a bunny to let them go ($${CFG.staff.fire} to say goodbye).`;
+    : `Your staff from yesterday are still here. Click a section to hire, or click a bunny to let them go. Letting a bunny go costs goodbye pay.`;
   const change = needChoice ? `<span class="hnote">${f.choice === 'accept' ? `You took the $${CFG.shady.cash}.` : 'You said no to the deal.'}</span>` : '';
   const card = `<b class="htitle">Hire staff</b>
-    ${reserved ? hrow('Ads (paid before dinner)', usd(-reserved)) : ''}${hrow(`$${w} per bunny a day`, n ? usd(-wages) : '$0')}${fired ? hrow(`Goodbye pay ×${fired}`, usd(-sev)) : ''}
-    ${hrow('Expect about', plural(guess, 'guest'))}${hrow('Suggested without your help', plural(sug, 'bunny', 'bunnies'))}${hrow('Left after wages', usd(after), 'you')}${warn}${change}${loan}
+    ${reserved ? hrow('Ads (paid before dinner)', usd(-reserved)) : ''}${hrow(`$${w} per bunny a day`, n ? usd(-wages) : '$0')}${fired ? hrow(`Goodbye pay ×${fired}`, usd(-sev), 'neg') : ''}
+    ${nextSev ? `<span class="hnote" title="Goodbye pay is bigger when your restaurant is worth more, and grows with each bunny you let go: the rest have to work harder.">${fired ? 'One more goodbye' : 'Letting a bunny go'}: <b>${fired ? '+' : ''}${usd(nextSev)}</b></span>` : ''}
+    ${hrow('Expect about', plural(guess, 'guest'))}${hrow('Suggested without your help', plural(sug, 'bunny', 'bunnies'))}${hrow('Left after staff costs', usd(after), 'you')}${warn}${change}${loan}
     <button class="cta" data-act="invest">${day1 ? 'Open for service →' : 'Go shopping →'}</button>`;
   return `<section class="hire2">${head(day1 ? 'Time to hire staff' : 'Hire staff', sub)}${hireStage(s, f.staff, card, day1 && f.tip < 3 ? hireTip(s, f.tip) : '')}</section>`;
 }
@@ -861,9 +865,16 @@ const SEAT_LOOK = { p1: { animal: 'cat', color: '#2546F0' }, p2: { animal: 'dog'
 const seatLook = s => SEAT_LOOK[s];
 function toggleHire(s, i) {
   const S = app.S, p = S.players[s], f = F({ staff: p.staff.slice() }), e = S.events[s];
-  if (f.staff.includes(i)) { f.staff = f.staff.filter(x => x !== i); return render(); }
   const cash = p.cash - adReserve(s) + (f.choice === 'accept' && e.type === 'shady' ? CFG.shady.cash : 0) + (CFG.loan.enabled && !p.loan && f.loan ? CFG.loan.amount : 0);
-  const next = [...f.staff, i], cost = staffCost(p, next.length);
+  if (f.staff.includes(i)) {
+    const left = f.staff.filter(x => x !== i);
+    // Letting a bunny go: the goodbye pay has to be paid today, so check there's cash for it
+    const fired = Math.max(0, p.staff.length - p.staff.filter(x => left.includes(x)).length - left.filter(x => !p.staff.includes(x)).length);
+    const sev = severance(p, fired, cash + adReserve(s));
+    if (p.staff.includes(i) && left.length * wageOf(p) + sev > Math.max(0, cash)) return toast(`Not enough cash for the goodbye pay (${usd(sev)} in all).`);
+    f.staff = left; return render();
+  }
+  const next = [...f.staff, i], cost = staffCost(p, next.length, cash + adReserve(s));
   if (cost > Math.max(0, cash)) return toast(`Not enough cash for another bunny ($${wageOf(p)} a day)`);
   f.staff = next.sort((a, b) => a - b);
   if (S.round === 1 && !f.firstHire) { f.firstHire = true; toast(`Hired! Each bunny costs $${wageOf(p)} a day.`); }
@@ -877,7 +888,7 @@ function marketBriefHTML(s) {
   const last = S.round >= CFG.rounds, E = expectedDemand(p), tables = p.tables;
   const guests = E.min === E.max ? `${E.min}` : `${Math.max(0, E.min)} to ${E.max}`;
   const card = (type, title, price, line, sub) => `<div class="brief-card"><span class="tbox ${type}">${ART.icon(type === 'exp' ? 'bolt' : 'box', 26)}</span>
-    <b>${title}</b><span class="price">$${price} each</span><span class="line">${line}</span><span class="hint">${sub}</span></div>`;
+    <b>${title}</b><span class="price">$${price} a plate</span><span class="line">${line}</span><span class="hint">${sub}</span></div>`;
   let action;
   if (mk.start && now < mk.start) action = `<div class="brief-go"><span class="hint">Get ready…</span><b class="gold" data-count="${mk.start}">${Math.ceil((mk.start - now) / 1000)}s</b></div>`;
   else if (mk.ready && mk.ready[s]) {
@@ -888,9 +899,9 @@ function marketBriefHTML(s) {
   return `<section class="panel lift brief" aria-labelledby="brief-title">
     <h1 id="brief-title">It's time for grocery shopping!</h1>
     <ol class="brief-rules">
-      <li>${gold(1, 'sm')}<span>You and ${esc(nameOf(o))} shop at the same time for <b>${M.time} seconds</b>. Whoever clicks an item first gets it.</span></li>
+      <li>${gold(1, 'sm')}<span>You and ${esc(nameOf(o))} shop at the same time for <b>${M.time} seconds</b>. Food comes in bundles of 1 to ${Math.max(...M.bundles.reg, ...M.bundles.exp)} plates. Whoever clicks a bundle first gets it.</span></li>
       <li>${gold(2, 'sm')}<span>After each buy you wait a few seconds while it's delivered (${last ? `${M.exp.cd}s` : `${M.exp.cd}s for Express, ${M.reg.cd}s for Regular`}). You can't grab anything else meanwhile.</span></li>
-      <li>${gold(3, 'sm')}<span>Every guest needs 1 plate. Food you don't use tonight goes bad overnight, so buy what you'll need.</span></li>
+      <li>${gold(3, 'sm')}<span>Every guest needs 1 plate, and a bundle costs its plates × the price. Food you don't use tonight goes bad overnight, so buy what you'll need.</span></li>
     </ol>
     <div class="brief-cards ${last ? 'one' : ''}">
       ${card('exp', 'Express', M.exp.price, 'Arrives today!', 'Always in time for tonight')}
@@ -907,57 +918,62 @@ function marketHTML(s) {
   const left = mktTimeLeft(), cash = mktCashLeft(s), c = app.cool[s], cooling = c && now < c.until;
   const mine = ownedBy(s), theirs = ownedBy(o), done = !S.waiting[s], p = S.players[s];
   const settled = i => !(c && c.i === i && cooling);
-  const tomorrow = i => items[i] === 'reg' && S.round < CFG.rounds && regTomorrow(app.seed, S.round, i);
+  const tomorrow = i => items[i].t === 'reg' && S.round < CFG.rounds && regTomorrow(app.seed, S.round, i);
+  const plates = list => list.reduce((a, i) => a + items[i].n, 0);
   const tbox = (type, cls = '') => `<span class="tbox sm ${type} ${cls}">${ART.icon(type === 'exp' ? 'bolt' : 'box', 16)}</span>`;
-  const slot = (type, i) => {
-    const own = mk.owner[i], T = M[type], nm = type === 'exp' ? 'Express' : 'Regular';
+  // One bundle: how many plates it makes, Express or Regular, and its price (plates × price per plate)
+  const slot = (it, i) => {
+    const type = it.t, own = mk.owner[i], nm = type === 'exp' ? 'Express' : 'Regular', price = itemPrice(it);
+    const head = `<span class="ihead">${tbox(type)}<span class="pn">${it.n}<small>${it.n === 1 ? 'plate' : 'plates'}</small></span></span>`;
+    const label = `${nm}, ${plural(it.n, 'plate')}, $${price}`;
     if (own === s) {
       const body = settled(i) ? `<span class="s ${tomorrow(i) ? 'later' : ''}">Yours · ${tomorrow(i) ? 'tomorrow morning' : 'tonight'}</span>`
         : `<span style="display:grid;gap:4px;width:100%"><span class="s">Yours · on its way…</span><span class="bar" data-t0="${c.start}" data-t1="${c.until}"><i></i></span></span>`;
-      return `<button class="item mine ${type}" data-act="grab" data-i="${i}" data-who="${s}" disabled aria-label="${nm}, yours">${tbox(type)}<b>${nm}</b>${body}</button>`;
+      return `<button class="item mine ${type}" data-act="grab" data-i="${i}" data-who="${s}" disabled aria-label="${label}, yours">${head}${body}</button>`;
     }
-    if (own) return `<button class="item taken ${type}" data-act="grab" data-i="${i}" data-who="${own}" disabled aria-label="${nm}, taken">${tbox(type)}<b>${nm}</b><span class="s">${esc(nameOf(own))} got it</span></button>`;
+    if (own) return `<button class="item taken ${type}" data-act="grab" data-i="${i}" data-who="${own}" disabled aria-label="${label}, taken">${head}<span class="s">${esc(nameOf(own))} got it</span></button>`;
     let st = '';
-    if (done || left <= 0) st = 'off'; else if (cash < T.price) st = 'poor'; else if (cooling) st = 'wait';
-    const sub = st === 'poor' ? `<span class="s">$${T.price} · you have ${usd(cash)}</span>` : `<span class="p">$${T.price}</span>`;
-    return `<button class="item ${type} ${st}" data-act="grab" data-i="${i}" ${st ? 'disabled' : ''} aria-label="${nm} food, $${T.price}">${tbox(type)}<b>${nm}</b>${sub}</button>`;
+    if (done || left <= 0) st = 'off'; else if (cash < price) st = 'poor'; else if (cooling) st = 'wait';
+    const sub = st === 'poor' ? `<span class="s">${nm} · $${price} · you have ${usd(cash)}</span>` : `<span class="p">${nm} · $${price}</span>`;
+    return `<button class="item ${type} ${st}" data-act="grab" data-i="${i}" ${st ? 'disabled' : ''} aria-label="${label}">${head}${sub}</button>`;
   };
   const t0 = mk.start || now, t1 = t0 + M.time * 1000;
+  const cheapest = Math.min(Infinity, ...items.map((it, i) => (mk.owner[i] ? Infinity : itemPrice(it))));
   let strip = '';
   if (done) strip = '';
   else if (cooling) strip = `<div class="strip" role="status">${ring(c.start, c.until, 'sm')}<span>Your ${c.type === 'exp' ? 'Express' : 'Regular'} is on its way. You can grab again in <span data-count="${c.until}">${Math.ceil((c.until - now) / 1000)}s</span>.</span></div>`;
-  else if (cash < M.reg.price) strip = `<div class="strip soft"><span><b>You're out of cash for food.</b> The cheapest food is $${M.reg.price} and you have ${usd(cash)}. Click "I'm done shopping" to move on.</span></div>`;
+  else if (cash < cheapest) strip = `<div class="strip soft"><span><b>You're out of cash for food.</b> The cheapest bundle left is $${cheapest} and you have ${usd(cash)}. Click "I'm done shopping" to move on.</span></div>`;
   else if (!mine.length) strip = `<div class="strip soft"><span>Click any item to buy it. Be quick: ${esc(nameOf(o))} is shopping too.</span></div>`;
   else if (S.submitted[o]) strip = `<div class="strip soft"><span class="dot round rival"></span><span><b>${esc(nameOf(o))} is done.</b> Everything left on the shelf is yours until the timer ends.</span></div>`;
-  const today = p.ingr + mine.filter(i => settled(i) && !tomorrow(i)).length, later = mine.filter(i => settled(i) && tomorrow(i)).length;
-  const onway = mine.filter(i => !settled(i)).length, bought = mine.filter(i => !settled(i) || !tomorrow(i)).length;
+  const today = p.ingr + plates(mine.filter(i => settled(i) && !tomorrow(i))), later = plates(mine.filter(i => settled(i) && tomorrow(i)));
+  const onway = plates(mine.filter(i => !settled(i))), bought = mine.filter(i => !settled(i) || !tomorrow(i)).length;
   const E = expectedDemand(p), tables = p.tables, guests = Math.round(E.total), need = Math.min(guests, tables);
   const plenty = today > Math.max(E.max, tables) + 2;
   const advice = plenty
     ? `<span style="font-size:13px;font-weight:600">That's plenty</span><span style="font-size:13px;color:var(--ink2);line-height:1.45">You have ${today} plates for about ${guests} guests. Unless your ads bring a crowd, the extra goes bad overnight.</span>`
-    : `<span style="font-size:13px;font-weight:600">How much do you need?</span><span style="font-size:13px;color:var(--ink2);line-height:1.45">About ${guests} regulars are coming and you have ${plural(tables, 'table')} free. About ${need} plates covers them. Buy a few more if your ads will bring extra guests.</span><span class="hint">Food you don't use tonight goes bad overnight.</span>`;
+    : `<span style="font-size:13px;font-weight:600">How much do you need?</span><span style="font-size:13px;color:var(--ink2);line-height:1.45">About ${guests} guests are coming. Tables are used again when guests leave, so plan about 1 plate per guest. Buy a few more if your ads will bring extra guests.</span><span class="hint">Food you don't use tonight goes bad overnight.</span>`;
   const legend = S.round >= CFG.rounds
-    ? `<div class="legend" style="grid-template-columns:1fr"><div>${tbox('exp')}<span><b>Last day: only Express food · $${M.exp.price}</b><span>It all arrives in time for tonight.</span></span></div></div>`
-    : `<div class="legend"><div><span class="tbox exp">${ART.icon('bolt', 18)}</span><span><b>Express · $${M.exp.price}</b><span>Always arrives in time for tonight</span></span></div>
-        <div><span class="tbox reg">${ART.icon('box', 18)}</span><span><b>Regular · $${M.reg.price}</b><span>${S.round === CFG.rounds - 1 ? "Half the time it arrives tomorrow, the last day" : 'Half the time it arrives tomorrow morning instead'}</span></span></div></div>`;
+    ? `<div class="legend" style="grid-template-columns:1fr"><div>${tbox('exp')}<span><b>Last day: only Express food · $${M.exp.price} a plate</b><span>It all arrives in time for tonight.</span></span></div></div>`
+    : `<div class="legend"><div><span class="tbox exp">${ART.icon('bolt', 18)}</span><span><b>Express · $${M.exp.price} a plate</b><span>Always arrives in time for tonight</span></span></div>
+        <div><span class="tbox reg">${ART.icon('box', 18)}</span><span><b>Regular · $${M.reg.price} a plate</b><span>${S.round === CFG.rounds - 1 ? "Half the time it arrives tomorrow, the last day" : 'Half the time it arrives tomorrow morning instead'}</span></span></div></div>`;
   return `<div class="game">
     <section class="panel lift" aria-label="The market shelf">
-      ${titleHTML('Market', `You and ${esc(nameOf(o))} shop at the same time. Whoever clicks an item first gets it.${adReserve(s) ? ` $${adReserve(s)} is kept aside for your ad cards.` : ''}`,
+      ${titleHTML('Market', `You and ${esc(nameOf(o))} shop at the same time. Whoever clicks a bundle first gets it.${adReserve(s) ? ` $${adReserve(s)} is kept aside for your ad cards.` : ''}`,
         `<div class="timer" role="timer">${ring(t0, t1)}<span class="t"><b data-count="${t1}">${Math.max(0, Math.ceil(left / 1000))}s</b><span>until the market closes</span></span></div>`)}
       ${legend}${strip}
-      <div class="shelf">${items.map((t, i) => slot(t, i)).join('')}</div>
-      <p class="hint">After each buy you wait while it's delivered: ${M.exp.cd} seconds for Express, ${M.reg.cd} for Regular.${S.round < CFG.rounds ? ' You find out when a Regular will arrive once its delivery finishes.' : ''}</p>
+      <div class="shelf">${items.map((it, i) => slot(it, i)).join('')}</div>
+      <p class="hint">Each bundle makes the number of plates on it, and 1 plate feeds 1 guest. After each buy you wait while it's delivered: ${M.exp.cd} seconds for Express, ${M.reg.cd} for Regular.${S.round < CFG.rounds ? ' You find out when a Regular will arrive once its delivery finishes.' : ''}</p>
     </section>
     <aside class="stack">
-      <section class="panel"><div class="row" style="gap:8px"><span class="dot you"></span><h2>Your food for tonight</h2></div>
-        <div class="row" style="gap:10px;align-items:baseline"><span class="big">${today}</span><span class="muted">${today === 1 ? 'plate' : 'plates'}</span></div>
+      <section class="panel"><div class="row" style="gap:8px"><span class="dot you"></span><h2>Dishes you can make tonight</h2></div>
+        <div class="row" style="gap:10px;align-items:baseline"><span class="big">${today}</span><span class="muted">${today === 1 ? 'dish' : 'dishes'} · 1 plate each</span></div>
         <div class="lines">${p.ingr ? `<div><span>Already in your kitchen</span><b>${p.ingr}</b></div>` : '<div><span class="muted">Your kitchen is empty. Everything you serve tonight comes from here.</span></div>'}
           ${bought ? `<div><span>Bought just now, arriving tonight</span><b>${today - p.ingr}</b></div>` : ''}${onway ? `<div class="muted"><span>Still on its way</span><b>${onway}</b></div>` : ''}${later ? `<div class="muted"><span>Arriving tomorrow morning</span><b>${later}</b></div>` : ''}</div>
         <div class="tile" style="gap:4px;padding:12px 14px">${advice}</div></section>
       <section class="panel" style="grid-template-columns:1fr auto;align-items:center"><span style="display:grid"><span class="hint">Cash left</span><span class="num" style="font-size:24px">${usd(cash)}</span></span>
         <span class="hint" style="text-align:right">Spent ${usd(p.cash - cash)} here.<br>Leftover food goes bad tonight.</span></section>
-      <section class="panel" style="grid-template-columns:auto 1fr auto;align-items:center"><span class="dot rival"></span><span style="font-size:13px;color:var(--ink2)"><b style="color:var(--ink)">${esc(nameOf(o))}</b> has grabbed ${plural(theirs.length, 'item')}</span><span class="hint">${S.submitted[o] ? 'done' : 'still shopping'}</span></section>
-      ${done ? waitCard(o, `They can keep shopping for <span data-count="${t1}">${Math.max(0, Math.ceil(left / 1000))}s</span> more. You bought ${plural(mine.length, 'food')} for ${usd(p.cash - cash)}.`)
+      <section class="panel" style="grid-template-columns:auto 1fr auto;align-items:center"><span class="dot rival"></span><span style="font-size:13px;color:var(--ink2)"><b style="color:var(--ink)">${esc(nameOf(o))}</b> has grabbed ${plural(theirs.length, 'bundle')} (${plural(plates(theirs), 'plate')})</span><span class="hint">${S.submitted[o] ? 'done' : 'still shopping'}</span></section>
+      ${done ? waitCard(o, `They can keep shopping for <span data-count="${t1}">${Math.max(0, Math.ceil(left / 1000))}s</span> more. You bought ${plural(plates(mine), 'plate')} for ${usd(p.cash - cash)}.`)
         : `<button class="cta outline" data-act="mkdone">I'm done shopping<small>Whatever's left stays on the shelf for ${esc(nameOf(o))}</small></button>`}
     </aside></div>`;
 }
@@ -1037,12 +1053,13 @@ function adsHTML(s) {
     const self = f.sel.filter(id => A[id].side === 'self'), E0 = expectedDemand(p), E = expectedDemand(p, self);
     const g0 = Math.round(E0.total), g1 = Math.round(E.total);
     return `<section class="adsflow"><div class="card2 adsc"><div class="ahead">${back}<h1 class="funt">Ads for your restaurant</h1></div>
+      <span class="fnote center">Pick as many as you like, or none. Click a card again to put it back.</span>
       <div class="adhand">${sh.self.map(card).join('')}</div>
       <div class="asum"><span>Tonight, with these: <b class="you">about ${g0}${g1 !== g0 ? ` → ${g1}` : ''} guests</b></span><span>Ads so far: <b>${usd(cost)}</b></span></div>
       ${next('rival', 'Next')}</div></section>`;
   }
   return `<section class="adsflow"><div class="card2 adsc"><div class="ahead">${back}<h1 class="funt">Ads for your opponent</h1></div>
-      <div class="anote"><span>🤫 ${esc(nameOf(o))} can't see what these do until right before the doors open for dinner.</span><span>But remember: that means you can't see what ads they placed for you either!</span></div>
+      <div class="anote"><span>🤫 ${esc(nameOf(o))} can't see what these do until right before the doors open for dinner. You can pick as many as you like.</span><span>But remember: that means you can't see what ads they placed for you either!</span></div>
       <div class="adhand">${sh.rival.map(card).join('')}</div>
       <div class="asum"><span></span><span>Ads so far: <b>${usd(cost)}</b></span></div>
       <button class="cta inline" data-act="commit">Confirm ads</button></div></section>`;
@@ -1260,7 +1277,7 @@ function serviceHTML(s) {
   }
   return `<section class="svc2" aria-label="Service"><div id="svc-host" data-seat="${s}" data-key="${svcKey(s)}"></div>
     <div class="svchelp"><span><b>Click a guest at the door</b> to seat them. <b>Click a seated guest</b> with a plate bubble to serve them. Out of plates? <b>Click the stove</b> to rush one, then click again (or Space) in the green.</span>
-    <span class="dim">Every guest pays $${sc.price}. Bunnies seat and serve their own rug; the other tables are yours.</span></div></section>`;
+    <span class="dim">Every guest pays $${sc.price}. Each bunny seats and serves the guests in its own section; the other tables are yours. When guests finish eating and leave, their table is free for the next guests.</span></div></section>`;
 }
 const CARDART = id => (adFace(id).art || '•');
 
@@ -1281,7 +1298,7 @@ function voucherHTML(s) {
   const boxes = Array.from({ length: Math.min(v.turned, 8) + 1 }, (_, n) => n).filter(n => n <= max);
   const u = v.turned - f.n, need = u > 3 ? u - 3 : u;
   const hint = f.n >= max && u > 0 ? `That's all your cash allows.` : u === 0 ? 'Nobody counts against your stars.' : need <= max - f.n
-    ? `Send ${need} more and you ${u > 3 ? 'lose only 1 star instead of 2' : 'keep your star'}. In the score, a star is worth $${CFG.starValue}.` : `In the score, a star is worth $${CFG.starValue}.`;
+    ? `Send ${need} more and you ${u > 3 ? 'lose only 1 star instead of 2' : 'keep your star'}. Each star pays you $${CFG.starValue} every night, and $${CFG.starValue} more in the final score.` : `Each star pays you $${CFG.starValue} every night, and $${CFG.starValue} more in the final score.`;
   return `<div class="vpage"><section class="card2 vcard2" role="dialog" aria-labelledby="vh">
     ${lab('After service')}<h1 class="funt" id="vh">${plural(v.turned, 'guest')} left unhappy</h1>
     <span class="fsub">Send a $${CFG.voucher} sorry voucher. Guests who get one don't count against your stars.</span>

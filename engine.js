@@ -4,12 +4,15 @@ const CFG = {
   rounds: 5, startCash: 200, startStars: 3,
   // price = income per table served (fixed, tips included)
   loc: {
-    country: { name: 'Countryside', tag: '$$', open: 20, rent: 5, tables: 20, price: 8 },
+    country: { name: 'Countryside', tag: '$$', open: 20, rent: 5, tables: 20, price: 10 },
     city:    { name: 'City', tag: '$$$', open: 35, rent: 12, tables: 16, price: 12 }
   },
   // Tables are fixed by location (2 per section). Staff: one bunny per section; wages are paid every day before opening.
-  // Bunnies stay from day to day; letting one go costs `fire` (severance). Wages are TBD.
-  staff: { wage: { country: 6, city: 10 }, fire: 10, perSection: 2 },
+  // Bunnies stay from day to day. Letting one go costs severance (team rule, playtest Nov 15):
+  //   fire.pay × daily wage × (1 / bunnies left after this one goes) × (fire.worth × net worth)
+  //   so a richer restaurant pays more, and each goodbye costs more as the team gets smaller (more pressure on the rest).
+  //   Net worth = cash + stars × starValue at the moment you decide. Wages are TBD.
+  staff: { wage: { country: 6, city: 10 }, fire: { pay: 0.5, worth: 0.2 }, perSection: 2 },
   baseDemand: 14,
   // Ad cards start on this day (days before it have no Ads step). From then on Ads is the first step of the day,
   // and the cards stay face down (only the counts are public) until just before service.
@@ -19,10 +22,13 @@ const CFG = {
   // Stars: each star above 3 adds perStar maybe-customers (each comes with `chance`);
   //        each star below 3 puts perStar regulars at risk (each stays away with `loseChance`)
   rep: { perStar: 2, chance: 0.5, loseChance: 0.5 },
-  // Live online market: all items on screen at once, both players click at the same time.
-  //   Express arrives today; Regular arrives today or tomorrow (revealed when its cooldown bar ends).
-  //   cd = cooldown in seconds after buying one; time = total seconds; jitter = ± how far the express/regular split drifts from half
-  market: { stock: 15, time: 60, jitter: 2,
+  // Live online market: a grid of food bundles, both players click at the same time and race for the same bundles.
+  //   bundles = how many plates each bundle makes (team grid, playtest Nov 15: 12 Regular + 12 Express = 24),
+  //   shuffled into new spots every day. price = per plate, so a bundle costs n × price.
+  //   Express arrives today; Regular arrives today or tomorrow (revealed when its cooldown bar ends). On the last day every bundle is Express.
+  //   cd = cooldown in seconds after buying a bundle; time = total seconds
+  market: { time: 60,
+    bundles: { reg: [10, 7, 5, 5, 3, 3, 3, 2, 2, 2, 2, 2], exp: [9, 6, 4, 4, 2, 2, 2, 1, 1, 1, 1, 1] },
     exp: { price: 6, cd: 3 }, reg: { price: 3, cd: 5, tomorrow: 0.5 } },
   // Ad shop (all TBD): each day you see 1 location card + 2 general cards for your shop, and 3 random cards for your rival's shop.
   // Every card can be bought once. All cards go face down; the other player only sees how many.
@@ -44,27 +50,29 @@ const CFG = {
     corner:   { side: 'rival', name: 'Corner the rush supplier', price: 7, extra: 3, desc: 'Their rush food costs $3 more each today' }
   },
   // Service (all TBD). Real time: guests walk in over the day; bunnies seat and serve their section, you do the rest.
-  //   rush: price range [min, max] for one rush plate (+ corner card extra)
+  //   rushShare: a rush plate costs this share of what the guest pays (half: you keep your stars, not the profit) (+ corner card extra)
   //   eventChance: chance of one event per day; food: give → foodGood chance +1 star, refuse → foodBad chance −1 star
   //   fightStaff: bunnies hurt in a fight (off for the rest of the day, still paid)
   //   live (page timing, seconds / pixels per second): dayLen, first walk-in, longest gap between walk-ins,
   //   qPat door patience, sPat patience waiting for a plate, cPat courier patience, eat time, walking speeds,
   //   mSpeed rush marker sweeps per second, zone green width (share of the bar), decide seconds for event pop-ups
-  service: { rush: [6, 9], eventChance: 0.6, foodGood: 0.2, foodBad: 0.5, propose: 0.5, tip: 20, fightStaff: 2, fewer: 3,
+  service: { rushShare: 0.5, eventChance: 0.6, foodGood: 0.2, foodBad: 0.5, propose: 0.5, tip: 20, fightStaff: 2, fewer: 3,
     live: { dayLen: 120, first: 6, gap: 8, qPat: 30, sPat: 30, cPat: 35, eat: 12, chefSpeed: 160, staffSpeed: 130,
       mSpeed: 0.7, zone: 0.11, decide: 15, tutSeed: 14 },
     // Build screen hints (TBD): about this many guests per bunny without your help; warn when less than foodWarn is left for food
     perBunny: 5, foodWarn: 20 },
   // Between two days: `chance` a thief takes half your cash, at most `cap`
   robbery: { chance: 0.05, cap: 30 },
-  voucher: 3,
+  voucher: 18,
   // Loans (off for now): set enabled to true to bring back the Build-phase loan and the automatic loan when rent can't be paid
   loan: { enabled: false, amount: 30, repay: 40 },
   // Each step the two players do on their own (pick, ads, staff, vouchers, recap) has a timer; when it runs out the page
   // goes on with the player's current choices. Page-only (the engine never reads the clock). TBD.
   stageSeconds: 180,
+  // Each star is worth starValue: paid into your cash at the end of every day, and counted again in the final score
   starValue: 20, shady: { cash: 15, fine: 20 }
 };
+CFG.market.stock = CFG.market.bundles.reg.length + CFG.market.bundles.exp.length;
 const round2 = x => Math.round(x * 100) / 100;
 const SEATS = ['p1', 'p2'];
 const other = s => (s === 'p1' ? 'p2' : 'p1');
@@ -98,23 +106,33 @@ const adHash = (c, salt) => String(cyrb53(`${c.self.join(',')}|${c.rival.join(',
 const adCost = c => [...c.self, ...c.rival].reduce((a, id) => a + CFG.ads[id].price, 0);
 
 // ---------- market helpers (the page uses these too) ----------
+// Today's bundles in their shuffled spots: [{t: 'exp'|'reg', n: plates}]. On the last day the Regular bundles are sold as Express.
 function marketItems(seed, r) {
-  const M = CFG.market, R = rand(seed, `mk${r}`);
-  const nExp = r >= CFG.rounds ? M.stock : intIn(Math.round(M.stock / 2 + (R() * 2 - 1) * M.jitter), 0, M.stock);
-  return shuffle([...Array(nExp).fill('exp'), ...Array(M.stock - nExp).fill('reg')], R);
+  const B = CFG.market.bundles, last = r >= CFG.rounds;
+  const list = [...B.reg.map(n => ({ t: last ? 'exp' : 'reg', n })), ...B.exp.map(n => ({ t: 'exp', n }))];
+  return shuffle(list, rand(seed, `mk${r}`));
 }
+const itemPrice = it => it.n * CFG.market[it.t].price;
 const regTomorrow = (seed, r, i) => rand(seed, `reg${r}:${i}`)() < CFG.market.reg.tomorrow;
 
 // ---------- service prices (the page shows them before you click) ----------
-// The i-th rush plate of the day
+// One rush plate: half of what the guest pays (you keep your reputation, not the profit), plus the corner card's extra
+const rushBase = p => round2(CFG.loc[p.loc].price * CFG.service.rushShare);
 function opPrice(S, s, i) {
-  const R = rand(S.seed, `rush${S.round}${s}:${i}`);
-  return between(R(), CFG.service.rush) + (S.script[s].cornered ? CFG.ads.corner.extra : 0);
+  return round2(rushBase(S.players[s]) + (S.script[s].cornered ? CFG.ads.corner.extra : 0));
 }
 const wageOf = p => CFG.staff.wage[p.loc] || 0;
 const sectionsOf = p => CFG.loc[p.loc].tables / CFG.staff.perSection;
+// What letting `fired` of today's bunnies go costs, one after another (see CFG.staff.fire). `cash` = cash at the moment you decide.
+const netWorth = (p, cash = p.cash) => round2(Math.max(0, cash) + p.stars * CFG.starValue);
+function severance(p, fired, cash = p.cash) {
+  const F = CFG.staff.fire, base = F.pay * wageOf(p) * F.worth * netWorth(p, cash);
+  let t = 0;
+  for (let i = 1; i <= Math.min(fired, p.staff.length); i++) t += base / Math.max(1, p.staff.length - i);
+  return round2(t);
+}
 // Hire / let go: wages for everyone on staff today, plus severance for each bunny fewer than yesterday
-function staffCost(p, n) { return n * wageOf(p) + Math.max(0, p.staff.length - n) * CFG.staff.fire; }
+function staffCost(p, n, cash = p.cash) { return round2(n * wageOf(p) + severance(p, Math.max(0, p.staff.length - n), cash)); }
 
 function newPlayer() {
   return { loc: null, cash: CFG.startCash, stars: CFG.startStars, tables: 0, staff: [], ingr: 0, pending: 0, wom: 0,
@@ -320,6 +338,9 @@ function review(S) {
     delta = Math.max(-2, Math.min(2, delta));
     const before = p.stars;
     p.stars = Math.max(1, Math.min(5, p.stars + delta));
+    // Stars pay out every day (and count again in the final score)
+    v.starPay = round2(p.stars * CFG.starValue);
+    money(p, `Stars ×${p.stars}`, v.starPay);
     const spoiled = Math.max(0, p.ingr);
     if (spoiled) note(p, `${spoiled} food spoiled`);
     p.ingr = 0;
@@ -416,10 +437,16 @@ function apply(S, got) {
         const nSec = sectionsOf(p), want = [];
         for (const raw of Array.isArray(a.staff) ? a.staff : []) { const i = Number(raw); if (Number.isInteger(i) && i >= 0 && i < nSec && !want.includes(i)) want.push(i); }
         const kept = want.filter(i => p.staff.includes(i)), added = want.filter(i => !p.staff.includes(i));
-        while (added.length && staffCost(p, kept.length + added.length) > Math.max(0, p.cash)) added.pop();
-        const fired = Math.max(0, p.staff.length - kept.length - added.length);
+        const cash0 = p.cash;
+        while (added.length && staffCost(p, kept.length + added.length, cash0) > Math.max(0, cash0)) added.pop();
+        // Goodbye pay you can't afford: those bunnies stay (the page stops you before this happens)
+        for (const i of p.staff) {
+          if (staffCost(p, kept.length + added.length, cash0) <= Math.max(0, cash0) || kept.length + added.length >= p.staff.length) break;
+          if (!kept.includes(i)) kept.push(i);
+        }
+        const fired = Math.max(0, p.staff.length - kept.length - added.length), sev = severance(p, fired, cash0);
         p.staff = [...kept, ...added].sort((x, y) => x - y);
-        if (fired) money(p, `Severance ×${fired}`, -fired * CFG.staff.fire);
+        if (fired) money(p, `Severance ×${fired}`, -sev);
         if (p.staff.length) money(p, `Wages ×${p.staff.length}`, -p.staff.length * wageOf(p));
       }
       // Day 1 skips the Market (the free food is already in the kitchen)
@@ -433,14 +460,14 @@ function apply(S, got) {
       for (const s of SEATS) {
         const p = S.players[s], b = { exp: 0, today: 0, tomorrow: 0, spent: 0, items: [] };
         for (const raw of Array.isArray(got[s].buys) ? got[s].buys : []) {
-          const i = intIn(raw, -1, M.stock - 1);
+          const i = intIn(raw, -1, m.items.length - 1);
           if (i < 0 || m.owner[i]) continue;
-          const type = m.items[i], price = M[type].price;
+          const it = m.items[i], price = itemPrice(it);
           if (p.cash < price) continue;
           m.owner[i] = s; p.cash = round2(p.cash - price); b.spent += price; b.items.push(i);
-          if (type === 'exp') { b.exp++; p.ingr++; }
-          else if (r < CFG.rounds && regTomorrow(S.seed, r, i)) { b.tomorrow++; p.pending++; }
-          else { b.today++; p.ingr++; }
+          if (it.t === 'exp') { b.exp += it.n; p.ingr += it.n; }
+          else if (r < CFG.rounds && regTomorrow(S.seed, r, i)) { b.tomorrow += it.n; p.pending += it.n; }
+          else { b.today += it.n; p.ingr += it.n; }
         }
         if (b.exp) p.ledger.push({ label: `Express food ×${b.exp}`, amt: -b.exp * M.exp.price });
         if (b.today + b.tomorrow) p.ledger.push({ label: `Regular food ×${b.today + b.tomorrow}${b.tomorrow ? ` (${b.tomorrow} tomorrow)` : ''}`, amt: -(b.today + b.tomorrow) * M.reg.price });
@@ -512,4 +539,4 @@ function simulate(seed, logs) {
 }
 
 if (typeof module !== 'undefined') module.exports = { CFG, simulate, adHash, adCost, capacityOf, expectedDemand, expected,
-  marketItems, regTomorrow, opPrice, staffCost, wageOf, sectionsOf, autoService };
+  marketItems, itemPrice, regTomorrow, opPrice, rushBase, staffCost, severance, netWorth, wageOf, sectionsOf, autoService };
