@@ -1053,13 +1053,13 @@ function adsHTML(s) {
     const self = f.sel.filter(id => A[id].side === 'self'), E0 = expectedDemand(p), E = expectedDemand(p, self);
     const g0 = Math.round(E0.total), g1 = Math.round(E.total);
     return `<section class="adsflow"><div class="card2 adsc"><div class="ahead">${back}<h1 class="funt">Ads for your restaurant</h1></div>
-      <span class="fnote center">Pick as many as you like, or none. Click a card again to put it back.</span>
+      <span class="fnote center">Pick as many as you like and can afford, or none. Click a card again to put it back.</span>
       <div class="adhand">${sh.self.map(card).join('')}</div>
       <div class="asum"><span>Tonight, with these: <b class="you">about ${g0}${g1 !== g0 ? ` → ${g1}` : ''} guests</b></span><span>Ads so far: <b>${usd(cost)}</b></span></div>
       ${next('rival', 'Next')}</div></section>`;
   }
   return `<section class="adsflow"><div class="card2 adsc"><div class="ahead">${back}<h1 class="funt">Ads for your opponent</h1></div>
-      <div class="anote"><span>🤫 ${esc(nameOf(o))} can't see what these do until right before the doors open for dinner. You can pick as many as you like.</span><span>But remember: that means you can't see what ads they placed for you either!</span></div>
+      <div class="anote"><span>🤫 ${esc(nameOf(o))} can't see what these do until right before the doors open for dinner. You can pick as many as you like and can afford.</span><span>But remember: that means you can't see what ads they placed for you either!</span></div>
       <div class="adhand">${sh.rival.map(card).join('')}</div>
       <div class="asum"><span></span><span>Ads so far: <b>${usd(cost)}</b></span></div>
       <button class="cta inline" data-act="commit">Confirm ads</button></div></section>`;
