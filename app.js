@@ -1059,7 +1059,7 @@ function adsHTML(s) {
       ${next('rival', 'Next')}</div></section>`;
   }
   return `<section class="adsflow"><div class="card2 adsc"><div class="ahead">${back}<h1 class="funt">Ads for your opponent</h1></div>
-      <div class="anote"><span>🤫 ${esc(nameOf(o))} can't see what these do until right before the doors open for dinner. You can pick as many as you like and can afford.</span><span>But remember: that means you can't see what ads they placed for you either!</span></div>
+      <div class="anote"><span>🤫 ${esc(nameOf(o))} can't see what these do until right before the doors open for dinner.</span><span>But remember: that means you can't see what ads they placed for you either!</span><span>You can pick as many as you like and can afford.</span></div>
       <div class="adhand">${sh.rival.map(card).join('')}</div>
       <div class="asum"><span></span><span>Ads so far: <b>${usd(cost)}</b></span></div>
       <button class="cta inline" data-act="commit">Confirm ads</button></div></section>`;
