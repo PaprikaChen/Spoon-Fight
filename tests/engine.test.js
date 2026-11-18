@@ -20,7 +20,7 @@ function bot(S, seat, rnd, priv) {
     case 'commit': {
       const sh = S.shops[seat], c = { self: pickSome(sh.self), rival: pickSome(sh.rival) }, salt = String(rnd());
       priv[seat] = { ...c, salt };
-      return { k, h: E.adHash(c, salt), nSelf: c.self.length, nRival: c.rival.length, cost: E.adCost(c) };
+      return { k, h: E.adHash(c, salt), nSelf: c.self.length, nRival: c.rival.length, cost: E.adCost(c), bump: E.adBump(S.seed, S.round, seat, c.rival) };
     }
     case 'reveal': return { k, ...(rnd() < 0.03 ? { ...priv[seat], self: ['flyer'] } : priv[seat]) };
     case 'service': {
@@ -185,4 +185,40 @@ console.log(wins, reasons, { avgServed: (stats.served / stats.days).toFixed(2), 
     if (!line || line.amt !== h.stars * C.starValue) { console.log('daily star pay wrong', s, h.round, h.stars, line); process.exit(1); }
   }
   console.log('rush price + bundles + daily star pay OK');
+}
+
+// Playtest Nov 17: False advertisement and Swamp them make the rival expect 2–5 more guests until the cards flip
+{
+  const C = E.CFG, seen = new Set();
+  for (let i = 0; i < 200; i++) for (const id of ['fake', 'swamp']) {
+    const n = E.adBump('look' + i, 3, 'p1', [id]); seen.add(n);
+    if (n < 2 || n > 5) { console.log('bump out of range', id, n); process.exit(1); }
+  }
+  if (seen.size !== 4) { console.log('bump should take every value 2–5', [...seen]); process.exit(1); }
+  if (E.adBump('x', 3, 'p1', ['review', 'poach', 'corner']) !== 0) { console.log('only fake and swamp should look like guests'); process.exit(1); }
+  const p = { stars: C.startStars, wom: 0 }, e0 = E.expectedDemand(p), e1 = E.expectedDemand(p, [], 4);
+  if (e1.total !== e0.total + 4 || e1.min !== e0.min + 4 || e1.max !== e0.max + 4) { console.log('expected guests should include the bump', e0, e1); process.exit(1); }
+  // A commit whose bump doesn't match the revealed cards: the ads do nothing and the money comes back
+  const play = (seed, bumpFix) => {
+    const logs = { p1: [], p2: [] }, salt = 's';
+    let S, c = { self: [], rival: [] };
+    for (let g = 0; g < 80; g++) {
+      S = E.simulate(seed, logs); if (S.phase === 'service' && S.round === C.adsFrom) break;
+      const s = S.waiting.p1 ? 'p1' : 'p2', k = S.waiting[s];
+      if (S.phase === 'commit' && s === 'p1') c = S.shops.p1.rival.includes('fake') ? { self: [], rival: ['fake'] } : { self: [], rival: [] };
+      const mine = s === 'p1' ? c : { self: [], rival: [] };
+      const a = { pick: { k, loc: 'country' }, morning: { k }, invest: { k, staff: [] }, market: { k, buys: [] }, voucher: { k, n: 0 }, report: { k }, service: { k, res: {} },
+        commit: { k, h: E.adHash(mine, salt), nSelf: 0, nRival: mine.rival.length, cost: E.adCost(mine), bump: E.adBump(S.seed, S.round, s, mine.rival) + (s === 'p1' ? bumpFix : 0) },
+        reveal: { k, ...mine, salt } }[S.phase];
+      logs[s].push(a);
+    }
+    return S;
+  };
+  let seed = null;
+  for (let i = 0; i < 300 && !seed; i++) { const S = play('fk' + i, 0); if (S.reveals && S.reveals.p1.rival.includes('fake')) seed = 'fk' + i; }
+  if (!seed) { console.log('no seed with a fake card in the shop'); process.exit(1); }
+  const good = play(seed, 0), bad = play(seed, 1);
+  if (!good.reveals.p1.ok || !good.commits.p1.bump) { console.log('honest bump should pass', good.commits.p1, good.reveals.p1); process.exit(1); }
+  if (bad.reveals.p1.ok || bad.reveals.p1.rival.length || bad.players.p1.cash !== good.players.p1.cash + C.ads.fake.price) { console.log('wrong bump should cancel the ads and refund', bad.reveals.p1, bad.players.p1.cash, good.players.p1.cash); process.exit(1); }
+  console.log('fake ad looks like guests OK');
 }

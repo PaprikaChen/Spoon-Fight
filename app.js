@@ -236,7 +236,7 @@ async function commitCards(s, k, c) {
     lsSet('ad:' + privKey(s, r), JSON.stringify(priv));
     try { await app.fb.set(`users/${app.uid}/ads/${app.code}-r${r}`, priv); } catch (e) {}
   }
-  act(s, { k, h: adHash(c, priv.salt), nSelf: c.self.length, nRival: c.rival.length, cost: adCost(c) });
+  act(s, { k, h: adHash(c, priv.salt), nSelf: c.self.length, nRival: c.rival.length, cost: adCost(c), bump: adBump(app.seed, r, s, c.rival) });
 }
 async function doReveal(s, k, r) {
   let priv = app.priv[privKey(s, r)];
@@ -454,6 +454,10 @@ function adReserve(s) {
   return 0; // ads are paid in the Ads step now, so nothing is kept aside
 }
 // What a player knows before the flip: how many cards the rival placed on them, not which
+// Extra guests the rival's hidden cards seem to bring (False advertisement and Swamp them), until the cards flip
+function looksBump(s) { const S = app.S, c = S.commits && S.commits[other(s)]; return S.round >= CFG.adsFrom && c && !(S.reveals && S.reveals[other(s)]) ? c.bump || 0 : 0; }
+// Tonight's guest estimate: regulars, stars, your own ads and what the rival's hidden ads seem to bring
+function guestGuess(s) { const S = app.S, mine = S.round >= CFG.adsFrom ? myCards(s) : null; return expectedDemand(S.players[s], mine ? mine.self : [], looksBump(s)); }
 function rivalCardsNote(s) {
   const S = app.S, o = other(s), n = S.round >= CFG.adsFrom && S.commits && S.commits[o] ? S.commits[o].nRival : 0;
   return n ? `<span class="pill2 rivalcards">📣 ${esc(nameOf(o))} placed ${plural(n, 'ad')} for you · revealed before dinner</span>` : '';
@@ -470,7 +474,7 @@ const INTRO = [
 // After the story: four pages on the goal (from the team's sketch). app.intro counts story pages, then these.
 const GOAL_PAGES = [
   { chip: 'YOUR GOAL', cap: 'Win the Golden Spoon competition.', sub: () => 'Then you get the keys and <b>re-open the Two Spoons restaurant.</b>' },
-  { chip: 'HOW TO WIN', cap: `Earn the most money in ${CFG.rounds} days.`, sub: () => `Whoever has more at the end of day ${CFG.rounds} wins.` },
+  { chip: 'HOW TO WIN', cap: 'Every dollar counts.', sub: () => 'Each day you spend money on staff, food and ads. <b>Spend it wisely!</b>' },  // the picture already says "earn the most money", and stars have their own page next (playtest Nov 17: it felt repetitive)
   { chip: 'STARS', cap: 'Star ratings can increase your money.', sub: () => `Each star pays you <b>$${CFG.starValue} every night</b>, and adds a <b>$${CFG.starValue} bonus</b> at the end of ${CFG.rounds} days.` },
   { chip: 'REMEMBER!', cap: 'Your rival is also trying to win!', sub: () => 'Watch what they do, and look out for tricks. You can play tricks too… <b>May the best restaurateur win!</b>' }];
 const INTRO_ALL = () => INTRO.length + GOAL_PAGES.length;
@@ -785,12 +789,14 @@ function offerHTML(s, f) {
 }
 // The Staff step: the restaurant fills the page (like Service); the money panel sits in the lower kitchen.
 // Day 1 starts with the team's three pop-ups (f.tip counts them).
-function hireStage(s, staff, card, over = '') {
+function hireStage(s, staff, card, over = '', locked = false) {
   const p = app.S.players[s], look = seatLook(s);
+  let plan = RRService.floorPlan(p.loc, staff, look.animal, look.color);
+  if (locked) plan = plan.replace(/<rect class="sec-hit"[^>]*\/>/g, '');
   // The kitchen can't be picked: hovering (or tapping) it pops up a note, from the team's sketch
   const kitchen = `<div class="khover" style="${RRService.kitchenBox}" tabindex="0" role="note" aria-label="Kitchen" onmouseleave="this.classList.remove('done')">
     <div class="kbubble"><b>You cook in the kitchen.</b><p>When the bunnies can't keep up, you seat and serve guests too.</p></div></div>`;
-  return `<div class="hstage">${RRService.floorPlan(p.loc, staff, look.animal, look.color)}${kitchen}<div class="hcard" style="${RRService.buildBox}">${card}</div>${over}</div>`;
+  return `<div class="hstage">${plan}${kitchen}<div class="hcard" style="${RRService.buildBox}">${card}</div>${over}</div>`;
 }
 const hrow = (l, r, cls = '') => `<div class="hrw ${cls}"><span>${l}</span><b>${r}</b></div>`;
 // Day-1 hiring tips (the team's three sticky notes; designs B and D from prototypes/hire-tip-options)
@@ -831,13 +837,16 @@ function buildHTML(s) {
   if (!k) {
     const g = S.got[s] || {}, bits = [];
     if (e.type === 'shady' && g.choice) bits.push(g.choice === 'accept' ? 'take the shady deal' : 'say no to the shady deal');
-    bits.push(p.staff.length ? `have ${plural(p.staff.length, 'bunny', 'bunnies')} on staff today` : 'run the restaurant without staff today');
-    return `<section class="hire2">${head('Your staff', `You chose to ${bits.join(', and ')}.`)}${hireStage(s, p.staff,
-      `<b class="htitle">Waiting for ${esc(nameOf(o))}…</b><span class="hnote">${day1 ? 'Service starts as soon as they\'re done.' : `The Market opens as soon as they're done. It lasts ${M.time} seconds, and the fastest clicks get the food.`}</span>`)}</section>`;
+    // Your confirmed staff: the engine only books them once both players are done, so show what you sent
+    const chosen = Array.isArray(g.staff) ? g.staff.slice().sort((a, b) => a - b) : p.staff;
+    bits.push(chosen.length ? `have ${plural(chosen.length, 'bunny', 'bunnies')} on staff today` : 'run the restaurant without staff today');
+    return `<section class="hire2">${head('Your staff', `You chose to ${bits.join(', and ')}.`)}${hireStage(s, chosen,
+      `<b class="htitle">Waiting for ${esc(nameOf(o))}…</b><span class="hnote">${day1 ? 'Service starts as soon as they\'re done.' : `The Market opens as soon as they're done. It lasts ${M.time} seconds, and the fastest clicks get the food.`}</span>`, '', true)}</section>`;
   }
   const f = F({ staff: p.staff.slice(), choice: null, loan: false, stage: '', tip: 0 }), needChoice = e && e.type === 'shady';
   if (day1 && !f.gift) return giftHTML(s);
   if (S.round >= CFG.adsFrom && !f.seenAds) return hiddenAdsHTML(s);
+  if (!day1 && !f.sintro) return staffIntroHTML(s);
   if (needChoice && !f.offer) return `<div class="solo2">${offerHTML(s, f)}</div>`;
   const loanOn = CFG.loan.enabled && !p.loan; // loans are off in CFG for now; this brings the option back if the team turns them on
   const reserved = adReserve(s), mine = myCards(s);
@@ -847,7 +856,7 @@ function buildHTML(s) {
   // It's worked out from the cash at this moment, the same as the engine does.
   const cashNow = cash + reserved, sev = severance(p, fired, cashNow), wages = n * w, after = round2(cash - wages - sev);
   const keptOld = p.staff.filter(i => f.staff.includes(i)).length, nextSev = !day1 && keptOld > 0 ? round2(severance(p, fired + 1, cashNow) - sev) : 0;
-  const E = expectedDemand(p, S.round >= CFG.adsFrom && mine ? mine.self : []), guess = Math.max(0, Math.round(E.total)), sug = Math.min(nSec, Math.ceil(guess / CFG.service.perBunny));
+  const E = guestGuess(s), guess = Math.max(0, Math.round(E.total)), sug = Math.min(nSec, Math.ceil(guess / CFG.service.perBunny));
   const warn = !day1 && after < CFG.service.foodWarn ? `<span class="hwarn">Only ${usd(after)} left for food at the Market.</span>` : '';
   const loan = !loanOn ? '' : `<button type="button" class="linkish" data-act="loan" data-v="${f.loan ? 0 : 1}">${f.loan ? `Loan taken: +$${CFG.loan.amount} (pay back $${CFG.loan.repay}). Undo` : `Take a $${CFG.loan.amount} loan (pay back $${CFG.loan.repay} at the end)`}</button>`;
   const sub = day1 ? `Click a section to hire a server. Each server looks after the ${CFG.staff.perSection} tables in their section.`
@@ -885,7 +894,7 @@ function toggleHire(s, i) {
 // Before the clock starts: what Express and Regular mean, so players can plan (from the team's sketch)
 function marketBriefHTML(s) {
   const S = app.S, M = CFG.market, p = S.players[s], o = other(s), mk = app.mkt || {}, now = Date.now();
-  const last = S.round >= CFG.rounds, E = expectedDemand(p), tables = p.tables;
+  const last = S.round >= CFG.rounds, E = guestGuess(s), tables = p.tables;
   const guests = E.min === E.max ? `${E.min}` : `${Math.max(0, E.min)} to ${E.max}`;
   const card = (type, title, price, line, sub) => `<div class="brief-card"><span class="tbox ${type}">${ART.icon(type === 'exp' ? 'bolt' : 'box', 26)}</span>
     <b>${title}</b><span class="price">$${price} a plate</span><span class="line">${line}</span><span class="hint">${sub}</span></div>`;
@@ -935,7 +944,8 @@ function marketHTML(s) {
     let st = '';
     if (done || left <= 0) st = 'off'; else if (cash < price) st = 'poor'; else if (cooling) st = 'wait';
     const sub = st === 'poor' ? `<span class="s">${nm} · $${price} · you have ${usd(cash)}</span>` : `<span class="p">${nm} · $${price}</span>`;
-    return `<button class="item ${type} ${st}" data-act="grab" data-i="${i}" ${st ? 'disabled' : ''} aria-label="${label}">${head}${sub}</button>`;
+    // Only 'off' is disabled: a click while waiting or short of cash explains why (claimItem's message) instead of doing nothing
+    return `<button class="item ${type} ${st}" data-act="grab" data-i="${i}" ${st === 'off' ? 'disabled' : ''} aria-label="${label}">${head}${sub}</button>`;
   };
   const t0 = mk.start || now, t1 = t0 + M.time * 1000;
   const cheapest = Math.min(Infinity, ...items.map((it, i) => (mk.owner[i] ? Infinity : itemPrice(it))));
@@ -947,7 +957,7 @@ function marketHTML(s) {
   else if (S.submitted[o]) strip = `<div class="strip soft"><span class="dot round rival"></span><span><b>${esc(nameOf(o))} is done.</b> Everything left on the shelf is yours until the timer ends.</span></div>`;
   const today = p.ingr + plates(mine.filter(i => settled(i) && !tomorrow(i))), later = plates(mine.filter(i => settled(i) && tomorrow(i)));
   const onway = plates(mine.filter(i => !settled(i))), bought = mine.filter(i => !settled(i) || !tomorrow(i)).length;
-  const E = expectedDemand(p), tables = p.tables, guests = Math.round(E.total), need = Math.min(guests, tables);
+  const E = guestGuess(s), tables = p.tables, guests = Math.round(E.total), need = Math.min(guests, tables);
   const plenty = today > Math.max(E.max, tables) + 2;
   const advice = plenty
     ? `<span style="font-size:13px;font-weight:600">That's plenty</span><span style="font-size:13px;color:var(--ink2);line-height:1.45">You have ${today} plates for about ${guests} guests. Unless your ads bring a crowd, the extra goes bad overnight.</span>`
@@ -1064,6 +1074,16 @@ function adsHTML(s) {
       <div class="asum"><span></span><span>Ads so far: <b>${usd(cost)}</b></span></div>
       <button class="cta inline" data-act="commit">Confirm ads</button></div></section>`;
 }
+// Day 2+: the Staff step opens with its own landing page, like the Ads intro (playtest Nov 17: players didn't see
+// that hiring comes after Ads). Day 1 doesn't need it: the gift page and the three hiring tips come first.
+function staffIntroHTML(s) {
+  const S = app.S, p = S.players[s], n = p.staff.length;
+  const have = n ? `You have ${plural(n, 'bunny', 'bunnies')} from yesterday.` : 'You have no bunnies on staff right now.';
+  return `<section class="adsflow"><div class="card2 adsc center intro"><span class="lab">Day ${S.round} · Next step</span><h1 class="funt big">Time to hire staff!</h1>
+    <div class="sintro-art">${bunnyPic(s, 150)}</div>
+    <span class="fsub">${have} Hire more for tonight, or let some go (that costs goodbye pay). Each bunny costs <b>$${wageOf(p)} a day</b>. After this comes the Market.</span>
+    <button class="cta inline" data-act="stage" data-v="sintro">Hire staff</button></div></section>`;
+}
 // Before staff: how many ads the opponent placed for you (not which)
 function hiddenAdsHTML(s) {
   // Today's ads: yours face up, the opponent's for you face down (how many, not which)
@@ -1073,7 +1093,7 @@ function hiddenAdsHTML(s) {
     <div class="grp"><div class="gh"><b>Your ads</b><span>${ids.length ? `You paid $${paid}. ${esc(nameOf(o))} can't see these until right before dinner.` : 'You didn\'t place any ads today.'}</span></div>
       ${ids.length ? `<div class="adhand">${ids.map(id => adCard(id, o, { button: false })).join('')}</div>` : ''}</div>
     <div class="sep"></div>
-    <div class="grp"><div class="gh"><b>Ads from ${esc(nameOf(o))} for you: ${n}</b><span>${n ? "You'll see what they do right before the doors open." : 'None today.'}</span></div>
+    <div class="grp"><div class="gh"><b>Ads from ${esc(nameOf(o))} for you: ${n}</b><span>${!n ? 'None today.' : looksBump(s) ? `They look like they'll bring you about <b style="font-size:inherit">${plural(looksBump(s), 'more guest', 'more guests')}</b> tonight. You'll see what they really do right before the doors open.` : "You'll see what they do right before the doors open."}</span></div>
       ${n ? `<div class="adhand">${Array.from({ length: n }, (_, i) => cardBack(i)).join('')}</div>` : ''}</div>
     <button class="cta inline" data-act="stage" data-v="ads">Ready</button></div></section>`;
 }
@@ -1108,11 +1128,13 @@ const RECEIVED = {
   poach: (A, o) => [`−${A.n} guest`, `${plural(A.n, 'guest')} goes to ${o} instead of you.`],
   swamp: (A) => [`+${A.n} guests`, `${A.n} extra guests come to you tonight. Can you serve them all?`],
   corner: (A) => [`+$${A.extra} rush`, `Each plate you rush tonight costs $${A.extra} more.`],
-  fake: () => ['No effect', 'This ad does nothing at all.']
+  fake: (A, o, n) => ['Fake ad!', `It made you expect ${n ? `about ${plural(n, 'more guest')}` : 'more guests'}, but nobody is coming. Did ${o} make you buy too much food?`]
 };
+// How many guests one hidden card seemed to bring (the same roll as the engine's adBump), for the reveal text
+const looksFor = (s, id) => adBump(app.seed, app.S.round, other(s), [id]);
 function receivedHTML(s, list) {
   const o = esc(nameOf(other(s)));
-  const ad = x => { const A = CFG.ads[x.id], [big, line] = (RECEIVED[x.id] || (() => ['', A.desc]))(A, o);
+  const ad = x => { const A = CFG.ads[x.id], [big, line] = (RECEIVED[x.id] || (() => ['', A.desc]))(A, o, looksFor(s, x.id));
     return `<div class="radc"><span class="em" aria-hidden="true">${adFace(x.id).art}</span><b>${esc(A.name)}</b><span class="big">${big}</span><span>${line}</span></div>`; };
   return `<section class="adsflow"><div class="card2 adsc center"><h1 class="funt">Ads received</h1>
     <span class="fsub">${o} placed ${list.length === 1 ? 'this ad' : 'these ads'} for your restaurant. Here's what ${list.length === 1 ? 'it does' : 'they do'} tonight.</span>
@@ -1147,7 +1169,7 @@ function trickResult(x, s) {
     case 'poach': return [`Took ${plural(A.n, 'guest')} of yours`, 'card: Poach a guest'];
     case 'swamp': return [`Sent you ${A.n} extra guests to overload you`, 'card: Swamp them'];
     case 'corner': return [`Made your emergency food cost $${A.extra} more`, 'Only matters if you rush food tonight · card: Corner the rush supplier'];
-    case 'fake': return ['Played a card on you that did nothing', "It was a bluff · card: False advertisement"];
+    case 'fake': { const n = looksFor(s, x.id); return [`Made you expect ${n ? plural(n, 'more guest') : 'more guests'} with a fake ad`, 'Nobody came: it was a bluff · card: False advertisement']; }
   }
   return [A.name, ''];
 }
@@ -1194,7 +1216,7 @@ function flipStamp(x, s) {
     case 'poach': return [`−${A.n} 👤`, `${o} took one of your guests.`, 'bad'];
     case 'swamp': return [`+${A.n} 👤`, `${o} sent you ${A.n} extra guests. Can you serve them?`, 'bad'];
     case 'corner': return [`+$${A.extra} 🍽`, 'Your rush plates cost more tonight.', 'bad'];
-    case 'fake': return ['BLUFF!', 'It does nothing at all.', ''];
+    case 'fake': { const n = looksFor(s, x.id); return ['FAKE AD!', `${n ? `The ${plural(n, 'guest')} you expected` : 'The guests you expected'} won't come. ${o} bluffed.`, 'bad']; }
   }
   return [`+${x.n} ARRIVED`, `${plural(x.n, 'more guest')} at your door.`, ''];
 }
@@ -1318,10 +1340,11 @@ function tipFor(s) {
   const S = app.S, v = S.service[s], h = S.players[s].history.slice(-1)[0], L = CFG.loc[S.players[s].loc];
   const robbed = S.morning[s] && S.morning[s].robbed;
   if (robbed && !v.turned && !v.rush.n && h.spoiled <= 1) return [`A thief took ${usd(robbed)} last night.`, "That's bad luck, not your running of the restaurant: nobody was turned away and almost nothing went to waste."];
-  if (v.turned > 0 && h.spoiled === 0) return [`${plural(v.turned, 'guest')} left unhappy, and your plates ran out.`, `A Regular at the Market is $${CFG.market.reg.price}. Buying ahead is cheaper than rushing or losing stars.`];
+  if (v.turned > 0 && h.spoiled === 0) return [`${plural(v.turned, 'guest')} left unhappy, and your plates ran out.`, `Regular food at the Market is $${CFG.market.reg.price} a plate. Buying ahead is cheaper than rushing or losing stars.`];
   if (v.turned > 0) return [`${plural(v.turned, 'guest')} waited too long and left.`, `Another bunny costs $${wageOf(S.players[s])} a day and seats and serves 2 tables. Or keep clicking guests at the door yourself.`];
-  if (v.rush.n) return [`You were ${plural(v.rush.n, 'plate')} short and had to rush ${v.rush.n === 1 ? 'it' : 'them'} for ${usd(v.rush.cost)}.`, `One more Regular at the Market costs $${CFG.market.reg.price}. Buying ahead is cheaper than rushing.`];
-  if (h.spoiled > 1) return [`${plural(h.spoiled, 'plate')} went to waste.`, 'Buy a little less food tomorrow, or bring in more guests with an ad.'];
+  if (v.rush.n) return [`You were ${plural(v.rush.n, 'plate')} short and had to rush ${v.rush.n === 1 ? 'it' : 'them'} for ${usd(v.rush.cost)}.`, `One more Regular plate at the Market costs $${CFG.market.reg.price}. Buying ahead is cheaper than rushing.`];
+  // Ads only come up once there are ads tomorrow (from day CFG.adsFrom)
+  if (h.spoiled > 1) return [`${plural(h.spoiled, 'plate')} went to waste.`, S.round + 1 >= CFG.adsFrom ? 'Buy a little less food tomorrow, or bring in more guests with an ad.' : 'Buy a little less food tomorrow.'];
   const flop = (S.script[s].info || []).find(x => x.k === 'card' && x.from === 'self' && (x.id === 'bus' || x.id === 'blogger') && !x.n);
   if (flop) return [`The ${CFG.ads[flop.id].name.toLowerCase()} didn't pay off.`, 'Chance cards are a gamble. Sure things like Flyers are steadier.'];
   return ['A perfect night!', `Nothing wasted, nobody turned away. Every guest paid $${L.price}. Do it again!`];
@@ -1371,7 +1394,7 @@ function recapHTML(s) {
       <div class="tile"><span class="v">${v.served + v.delivered} of ${v.demand}</span><span class="s">guests served</span></div><div class="tile ${v.turned ? 'bad' : ''}"><span class="v">${v.turned}</span><span class="s">left unhappy${v.vouchers ? ` (${v.vouchers} got a voucher)` : ''}</span></div>
       <div class="tile"><span class="v">${h.spoiled}</span><span class="s">plates thrown away</span></div><div class="tile"><span class="v">${v.rush.n}</span><span class="s">plates rushed${v.rush.n ? ` (${usd(-v.rush.cost)})` : ''}</span></div></div></section>
     <div class="stack"><section class="panel edge"><span class="hint" style="font-weight:700;color:var(--muted)">For tomorrow</span><b style="font-size:15px;line-height:1.35">${tipA}</b><span style="font-size:13px;color:var(--ink2);line-height:1.45">${tipB}</span>${last ? '' : tomorrowFood}</section>
-      <section class="panel" style="grid-template-columns:auto 1fr;align-items:center"><span class="dot round rival"></span><span style="font-size:13px;color:var(--ink2)"><b style="color:var(--ink)">${esc(nameOf(o))}</b> served ${rv.served + rv.delivered}, ${rv.turned} left unhappy${rd ? `, ${rd > 0 ? 'gained' : 'lost'} ${plural(Math.abs(rd), 'star')}` : ''}. ${S.reveals[o] && S.reveals[o].self.length ? `Their ads: ${S.reveals[o].self.map(id => esc(CFG.ads[id].name)).join(', ')}.` : 'No ads for their own restaurant.'}</span></section>
+      <section class="panel" style="grid-template-columns:auto 1fr;align-items:center"><span class="dot round rival"></span><span style="font-size:13px;color:var(--ink2)"><b style="color:var(--ink)">${esc(nameOf(o))}</b> served ${rv.served + rv.delivered}, ${rv.turned} left unhappy${rd ? `, ${rd > 0 ? 'gained' : 'lost'} ${plural(Math.abs(rd), 'star')}` : ''}. ${S.round < CFG.adsFrom ? '' : S.reveals[o] && S.reveals[o].self.length ? `Their ads: ${S.reveals[o].self.map(id => esc(CFG.ads[id].name)).join(', ')}.` : 'No ads for their own restaurant.'}</span></section>
       ${btn}</div>
   </div>`;   // the day-by-day table is on the final results page
 }
@@ -1558,7 +1581,7 @@ document.addEventListener('click', e => {
     }
     case 'inc': { const f = F({}); f[b.dataset.f] = Math.max(0, (f[b.dataset.f] || 0) + Number(b.dataset.d)); return render(); }
     case 'choose': { const f = F({}); f.choice = b.dataset.c; return render(); }
-    case 'stage': { const f = F({}), v = b.dataset.v; if (v === 'gift') f.gift = true; else if (v === 'offer') f.offer = true; else if (v === 'ads') f.seenAds = true; return render(); }
+    case 'stage': { const f = F({}), v = b.dataset.v; if (v === 'gift') f.gift = true; else if (v === 'offer') f.offer = true; else if (v === 'ads') f.seenAds = true; else if (v === 'sintro') f.sintro = true; return render(); }
     case 'endstep': app.endStep[s] = Number(b.dataset.n); window.scrollTo(0, 0); return render();
     case 'share': return shareSummary();
     case 'mornok': app.mornSeen[mornKey(s)] = true; return render();
@@ -1584,7 +1607,7 @@ document.addEventListener('click', e => {
     case 'pick': return act(s, { k, loc: b.dataset.loc });
     case 'hire': return toggleHire(s, Number(b.dataset.i));
     case 'invest': { const f = F({ staff: S.players[s].staff.slice() }); return act(s, { k, staff: f.staff, choice: f.choice || null, loan: !!(CFG.loan.enabled && f.loan) }); }
-    case 'grab': return claimItem(s, Number(b.dataset.i));
+    case 'grab': if (e.detail) return; return claimItem(s, Number(b.dataset.i)); // mouse/touch grabs happen on press (below); this is the keyboard
     case 'mkdone': return finishMarket(s);
     case 'mkstart': return marketReady(s);
     case 'commit': {
@@ -1595,6 +1618,14 @@ document.addEventListener('click', e => {
     case 'voucher': { const f = F({}); return act(s, { k, n: b.dataset.n === '0' ? 0 : f.n || 0 }); }
     case 'next': return act(s, { k });
   }
+});
+// Market bundles grab on press, not on click: the shelf redraws whenever the rival grabs something, and a redraw
+// between press and release drops the click (players had to click twice)
+document.addEventListener('pointerdown', e => {
+  if (e.button !== 0) return;
+  const b = e.target.closest('[data-act="grab"]'); if (!b || b.disabled) return;
+  const S = app.S, s = viewer(); if (!S || !S.waiting[s]) return;
+  e.preventDefault(); claimItem(s, Number(b.dataset.i));
 });
 // Keyboard: Esc closes How to play; Enter / Space press a focused drawing button (the service has its own keys in service.js)
 document.addEventListener('keydown', e => {

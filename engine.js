@@ -43,10 +43,12 @@ const CFG = {
     flyer:    { side: 'self', name: 'Flyers', price: 8, n: 2, desc: '+2 guests' },
     blogger:  { side: 'self', name: 'Food blogger visit', price: 12, n: 4, chance: 0.5, star: 0.3, desc: '50%: +4 guests. Turn nobody away that day: 30% chance of +1 star' },
     coupon:   { side: 'self', name: 'Opening coupon', price: 4, n: 3, off: 3, desc: '+3 guests, each pays $3 less' },
-    fake:     { side: 'rival', name: 'False advertisement', price: 4, desc: 'Does nothing. Makes them over-prepare' },
+    // looks: until the cards flip, the rival's "expect about N guests" goes up by a random amount in this range (team, playtest Nov 17).
+    //   Swamp shows the same kind of rise, so the rival can't tell which hidden card it is.
+    fake:     { side: 'rival', name: 'False advertisement', price: 4, looks: [2, 5], desc: 'Does nothing. Makes them over-prepare: they expect 2–5 more guests' },
     review:   { side: 'rival', name: 'Bad review', price: 8, n: 2, desc: 'They get 2 fewer guests' },
     poach:    { side: 'rival', name: 'Poach a guest', price: 9, n: 1, desc: '1 of their guests comes to you instead' },
-    swamp:    { side: 'rival', name: 'Swamp them', price: 8, n: 3, desc: '+3 guests for them. Can they seat them all?' },
+    swamp:    { side: 'rival', name: 'Swamp them', price: 8, n: 3, looks: [2, 5], desc: '+3 guests for them. Can they seat them all?' },
     corner:   { side: 'rival', name: 'Corner the rush supplier', price: 7, extra: 3, desc: 'Their rush food costs $3 more each today' }
   },
   // Service (all TBD). Real time: guests walk in over the day; bunnies seat and serve their section, you do the rest.
@@ -104,6 +106,9 @@ const between = (r, [lo, hi]) => lo + Math.floor(r * (hi - lo + 1));
 // Hidden card placement: only the count per shop is public; which cards they are is locked with a checksum
 const adHash = (c, salt) => String(cyrb53(`${c.self.join(',')}|${c.rival.join(',')}|${salt}`));
 const adCost = c => [...c.self, ...c.rival].reduce((a, id) => a + CFG.ads[id].price, 0);
+// How many extra guests the hidden cards placed on the rival seem to bring (cards with `looks`), one roll per card.
+// Public in the commit (`bump`) so the rival's page can show it; checked at the reveal like the cost.
+const adBump = (seed, r, s, rival) => (rival || []).reduce((a, id) => a + (CFG.ads[id].looks ? between(rand(seed, `look${r}${s}${id}`)(), CFG.ads[id].looks) : 0), 0);
 
 // ---------- market helpers (the page uses these too) ----------
 // Today's bundles in their shuffled spots: [{t: 'exp'|'reg', n: plates}]. On the last day the Regular bundles are sold as Express.
@@ -142,10 +147,11 @@ function money(p, label, amt) { p.cash = round2(p.cash + amt); p.ledger.push({ l
 function note(p, label) { p.ledger.push({ label, amt: null }); }
 
 // Expected customers before the doors open, for hints. selfCards = your own ad cards (known).
-function expectedDemand(p, selfCards = []) {
+// looks = extra guests the rival's hidden cards seem to bring (adBump); counted as sure guests until the cards flip
+function expectedDemand(p, selfCards = [], looks = 0) {
   const d = p.stars - CFG.startStars, per = CFG.rep.perStar;
   const rep = d > 0 ? d * per * CFG.rep.chance : -(-d) * per * CFG.rep.loseChance;
-  let ads = 0, adMin = 0, adMax = 0;
+  let ads = looks, adMin = looks, adMax = looks;
   for (const id of selfCards) {
     const A = CFG.ads[id];
     if (id === 'subway') { ads += A.n - (A.n - A.low) * A.lowChance; adMin += A.low; adMax += A.n; }
@@ -480,7 +486,7 @@ function apply(S, got) {
       for (const s of SEATS) {
         const a = got[s], sh = S.shops[s];
         const p = S.players[s], cost = Math.min(intIn(a.cost, 0, 999), Math.max(0, Math.floor(p.cash)));
-        S.commits[s] = { h: String(a.h), nSelf: intIn(a.nSelf, 0, sh.self.length), nRival: intIn(a.nRival, 0, sh.rival.length), cost };
+        S.commits[s] = { h: String(a.h), nSelf: intIn(a.nSelf, 0, sh.self.length), nRival: intIn(a.nRival, 0, sh.rival.length), cost, bump: intIn(a.bump, 0, 99) };
         if (cost) money(p, `Ads ×${S.commits[s].nSelf + S.commits[s].nRival}`, -cost);
       }
       S.phase = 'invest'; break;   // staff and market next; the cards flip after the market
@@ -489,7 +495,7 @@ function apply(S, got) {
       for (const s of SEATS) {
         const p = S.players[s], a = got[s], cm = S.commits[s], sh = S.shops[s];
         let c = { self: validCards(a.self, sh.self), rival: validCards(a.rival, sh.rival) };
-        let ok = !!(c.self && c.rival) && adHash(c, a.salt) === cm.h && c.self.length === cm.nSelf && c.rival.length === cm.nRival && adCost(c) === cm.cost;
+        let ok = !!(c.self && c.rival) && adHash(c, a.salt) === cm.h && c.self.length === cm.nSelf && c.rival.length === cm.nRival && adCost(c) === cm.cost && adBump(S.seed, S.round, s, c.rival) === cm.bump;
         // A failed check (wrong cards, or a price that doesn't match what was paid) makes every ad do nothing, and the money comes back
         if (!ok) { c = { self: [], rival: [] }; if (cm.cost) money(p, 'Ads refunded', cm.cost); }
         S.reveals[s] = { ...c, ok };
@@ -538,5 +544,5 @@ function simulate(seed, logs) {
   return S;
 }
 
-if (typeof module !== 'undefined') module.exports = { CFG, simulate, adHash, adCost, capacityOf, expectedDemand, expected,
+if (typeof module !== 'undefined') module.exports = { CFG, simulate, adHash, adCost, adBump, capacityOf, expectedDemand, expected,
   marketItems, itemPrice, regTomorrow, opPrice, rushBase, staffCost, severance, netWorth, wageOf, sectionsOf, autoService };

@@ -606,9 +606,9 @@ function create(host, opts) {
       if (key !== g.key) { g.key = key; g.node.innerHTML = (seated ? '' : hl + '<rect x="-22" y="-62" width="44" height="70" fill="transparent"/>') + (glow ? `<ellipse cx="0" cy="-26" rx="24" ry="34" fill="none" stroke="#FFE08A" stroke-width="4" opacity=".9"/>` : '') + pawn(g.col, seated) + (g.angry ? `<g transform="translate(0 -40)"><path d="M-5 -5 l10 10 M5 -5 l-10 10" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/></g>` : '') + badgeFor(g); }
       g.node.setAttribute('transform', `translate(${g.x.toFixed(1)} ${g.y.toFixed(1)})`);
       let r = '';
-      if (g.state === 'queue' && !g.claimed) r = `<g transform="translate(${g.x} ${g.y - 70})">${ringSVG(g.pat / P.qPat)}</g>`;
+      if (g.state === 'queue') r = `<g transform="translate(${g.x} ${g.y - 70})">${ringSVG(g.pat / P.qPat)}</g>`;
       if (g.state === 'wait') {
-        const f = g.server ? 1 : g.pat / P.sPat;
+        const f = g.pat / P.sPat;
         r = `<g transform="translate(${g.x + 26} ${g.y - 52})"><circle r="17" fill="#FFF7EC" stroke="${OUT}" stroke-width="1.5"/>${platePath(0, 1, .9)}<circle r="17" fill="none" stroke="${f < .34 ? '#E63946' : f < .6 ? '#F4A261' : '#52B788'}" stroke-width="3.5" stroke-dasharray="${(107 * f).toFixed(1)} 107" transform="rotate(-90)"/></g><rect class="click" data-click="g${g.id}" x="${g.x - 40}" y="${g.y - 72}" width="88" height="100" rx="14" fill="transparent"/>`;
       }
       g.ring.innerHTML = r;
@@ -632,7 +632,7 @@ function create(host, opts) {
       const key = 'c' + badgeFor(c);
       if (key !== c.key) { c.key = key; c.node.innerHTML = hl + courierSVG() + badgeFor(c); }
       c.node.setAttribute('transform', `translate(${c.x.toFixed(1)} ${c.y.toFixed(1)})`);
-      c.ring.innerHTML = c.state === 'wait' ? `<g transform="translate(${c.x} ${c.y - 70})">${ringSVG(c.server ? 1 : c.pat / P.cPat)}</g><g transform="translate(${c.x - 40} ${c.y - 22})"><rect x="-16" y="-14" width="32" height="28" rx="8" fill="#FFF7EC" stroke="${OUT}" stroke-width="1.4"/>${platePath(0, 2, .9)}</g><rect class="click" data-click="c${c.id}" x="${c.x - 62}" y="${c.y - 86}" width="84" height="94" rx="14" fill="transparent"/>` : '';
+      c.ring.innerHTML = c.state === 'wait' ? `<g transform="translate(${c.x} ${c.y - 70})">${ringSVG(c.pat / P.cPat)}</g><g transform="translate(${c.x - 40} ${c.y - 22})"><rect x="-16" y="-14" width="32" height="28" rx="8" fill="#FFF7EC" stroke="${OUT}" stroke-width="1.4"/>${platePath(0, 2, .9)}</g><rect class="click" data-click="c${c.id}" x="${c.x - 62}" y="${c.y - 86}" width="84" height="94" rx="14" fill="transparent"/>` : '';
     });
     const kids = [...L.walk.children], ys = n => { const m = /translate\(([-\d.]+) ([-\d.]+)\)/.exec(n.getAttribute('transform') || ''); return m ? +m[2] : 0; };
     const sorted = kids.slice().sort((a, b) => ys(a) - ys(b));
@@ -680,7 +680,7 @@ function create(host, opts) {
   const colName = MC === '#D61F69' ? 'Pink' : 'Blue';
   const TOUR1 = [
     { text: 'This is you, the chef.', spot: () => ({ c: [S.chef.x, S.chef.y - 50, 70] }), at: () => [S.chef.x, S.chef.y - 120] },
-    { need: 'staff', text: 'Each bunny seats and serves the guests in its own section.', spot: () => { const s = sections.find(s => s.on); return s ? { r: [s.x - 6, s.y - 6, s.w + 12, s.h + 12] } : null; }, at: () => { const s = sections.find(s => s.on); return s ? [s.x + s.w / 2, s.y + s.h + 4] : [W / 2, H / 2]; }, below: true },
+    { need: 'staff', text: 'Bunnies seat and serve their rug.', spot: () => { const s = sections.find(s => s.on); return s ? { r: [s.x - 6, s.y - 6, s.w + 12, s.h + 12] } : null; }, at: () => { const s = sections.find(s => s.on); return s ? [s.x + s.w / 2, s.y + s.h + 4] : [W / 2, H / 2]; }, below: true },
     { need: 'nostaff', text: 'No staff? Those tables are yours.', spot: () => { const s = sections.filter(s => !s.on).pop(); return s ? { r: [s.x - 6, s.y - 6, s.w + 12, s.h + 12] } : null; }, at: () => { const s = sections.filter(s => !s.on).pop(); return s ? [s.x + s.w / 2, s.y - 8] : [W / 2, H / 2]; } },
     { text: 'Out of food? Make a rush dish here.', spot: () => ({ r: [SXs - 12, SY - 12, 184, 102] }), at: () => [SC, SY + 96], below: true },
     { text: 'Try one now. This one is free!', done: 'Nice! That plate is yours.', practice: true, spot: () => ({ r: [KX + 16, SY - 12, KR - KX - 32, 250] }), at: () => [SC, SY - 20], last: true }
@@ -866,7 +866,12 @@ function create(host, opts) {
   svg.addEventListener('pointerdown', onPointer);
   function onKey(e) {
     if (!alive || !root.isConnected) return;
-    if (e.code === 'Space' && (S.open || (S.chef.cur && S.chef.cur.practice)) && !S.ended && !['INPUT', 'BUTTON', 'SUMMARY', 'TEXTAREA'].includes(document.activeElement.tagName)) { e.preventDefault(); rushTry(); }
+    if (e.code !== 'Space' || !(S.open || (S.chef.cur && S.chef.cur.practice)) || S.ended) return;
+    // Space is the stove during service, even if a button (a pop-up, a speed button) still has focus; only typing and open pop-ups keep it
+    const a = document.activeElement, tag = a ? a.tagName : '';
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) || S.modal) return;
+    if ((tag === 'BUTTON' || tag === 'SUMMARY') && !root.contains(a) && a.offsetParent !== null) return;
+    e.preventDefault(); if (tag === 'BUTTON' || tag === 'SUMMARY') a.blur(); rushTry();
   }
   window.addEventListener('keydown', onKey);
   root.addEventListener('click', e => {

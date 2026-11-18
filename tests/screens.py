@@ -32,7 +32,7 @@ window.__shot = (() => {
       }
       case 'commit': {
         const sh = S.shops[s], c = { self: opt.noAds ? [] : sh.self.slice(0, 1), rival: opt.noAds ? [] : sh.rival.slice(0, 1) };
-        priv[s] = { ...c, salt }; return { k, h: adHash(c, salt), nSelf: c.self.length, nRival: c.rival.length, cost: adCost(c) };
+        priv[s] = { ...c, salt }; return { k, h: adHash(c, salt), nSelf: c.self.length, nRival: c.rival.length, cost: adCost(c), bump: adBump(S.seed, S.round, s, c.rival) };
       }
       case 'reveal': return { k, ...priv[s] };
       case 'service': {
@@ -113,14 +113,15 @@ SCREENS = [
   ('06b-hire-tip2', "__shot.load(__shot.playTo('shot0', 'invest', 1), 'p1', { form: { staff: [], choice: null, gift: true, offer: true, tip: 1 } })"),
   ('06c-hire-tip3', "__shot.load(__shot.playTo('shot0', 'invest', 1), 'p2', { form: { staff: [], choice: null, gift: true, offer: true, tip: 2 } })"),
   ('06-build-day1', "__shot.load(__shot.playTo('shot0', 'invest', 1), 'p1', { form: { staff: [1, 4], choice: null, gift: true, offer: true, tip: 3 } })"),
-  ('07-build-day2', "__shot.load(__shot.playTo('shot0', 'invest', 2), 'p1', { form: { staff: [0, 5], choice: 'accept', offer: true } })"),
-  ('08-morning-shady-unanswered', "{ const g = __shot.find('invest', 2, S => S.events.p1.type === 'shady'); __shot.load(g, 'p1', { form: { staff: [0, 2, 5], choice: null } }) }"),
-  ('09-build-robbed', "{ const g = __shot.find('invest', null, S => S.round > 1 && S.morning.p1 && S.morning.p1.robbed > 0 && S.events.p1.type === 'quiet'); if (g) __shot.load(g, 'p1', { form: { staff: [0, 2, 5], choice: null } }) }"),
+  ('07-build-day2', "__shot.load(__shot.playTo('shot0', 'invest', 2), 'p1', { form: { staff: [0, 5], choice: 'accept', offer: true, sintro: true } })"),
+  ('08-morning-shady-unanswered', "{ const g = __shot.find('invest', 2, S => S.events.p1.type === 'shady'); __shot.load(g, 'p1', { form: { staff: [0, 2, 5], choice: null, sintro: true } }) }"),
+  ('07a-staff-intro', "__shot.load(__shot.playTo('shot0', 'invest', 2), 'p1', { form: { staff: [0, 2, 5], choice: null } })"),
+  ('09-build-robbed', "{ const g = __shot.find('invest', null, S => S.round > 1 && S.morning.p1 && S.morning.p1.robbed > 0 && S.events.p1.type === 'quiet'); if (g) __shot.load(g, 'p1', { form: { staff: [0, 2, 5], choice: null, sintro: true } }) }"),
   ('10a-market-briefing', "{ const g = __shot.playTo('shot0', 'market', 2); __shot.load(g, 'p1', { market: { owner: {}, elapsed: null } }) }"),
   ('10b-market-waiting-rival', "{ const g = __shot.playTo('shot0', 'market', 2); __shot.load(g, 'p1', { market: { owner: {}, elapsed: null, ready: { p1: Date.now() - 8000 } } }) }"),
   ('10-market', "{ const g = __shot.playTo('shot0', 'market', 2); __shot.load(g, 'p1', { market: { owner: { 0: 'p1', 1: 'p2', 2: 'p2', 4: 'p1', 5: 'p2' }, elapsed: 24, cooling: 4 } }) }"),
   ('11-market-last-day', "{ const g = __shot.find('market', 5, S => true, { loc: { p1: 'country', p2: 'country' }, rush: true }); __shot.load(g, 'p1', { market: { owner: { 0: 'p2' }, elapsed: 5 } }) }"),
-  ('12f-staff-day3-after-ads', "{ const g = __shot.playTo('shot0', 'invest', 3); __shot.load(g, 'p1', { form: { staff: [0, 2, 5], choice: null, offer: true, seenAds: true } }) }"),
+  ('12f-staff-day3-after-ads', "{ const g = __shot.playTo('shot0', 'invest', 3); __shot.load(g, 'p1', { form: { staff: [0, 2, 5], choice: null, offer: true, seenAds: true, sintro: true } }) }"),
   ('11b-new-day', "__shot.load(__shot.playTo('shot0', 'commit', 3), 'p1', { morning: true })"),
   ('11c-new-day-break-in', "{ const g = __shot.find('invest', null, S => S.round > 1 && S.morning.p1 && S.morning.p1.robbed > 0); if (g) __shot.load(g, 'p1', { morning: true }) }"),
   ('12a-ads-intro', "__shot.load(__shot.playTo('shot0', 'commit', 3), 'p1')"),
