@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Ending pages</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Luckiest+Guy&display=swap">
+<style>
+  :root{--gold:#FFD21F;--blue:#2546F0;--pink:#D61F69;--card:#1A1A1C}
+  body{margin:0;padding:24px;background:#DADFEE;font-family:Inter,system-ui,sans-serif;display:grid;gap:28px}
+  .label{font:800 15px Inter;color:#18181B}.label i{font-style:normal;color:#B91C1C;margin-left:8px}
+  .page{position:relative;width:1200px;height:720px;border-radius:28px;background:#0B0B0D;color:#F4F4F5;display:grid;place-items:center;overflow:hidden}
+  .in{display:grid;justify-items:center;gap:18px;text-align:center;max-width:900px}
+  .fun{font:400 54px/1.05 "Luckiest Guy";color:var(--gold);margin:0;letter-spacing:.01em}
+  .kick{font:800 14px Inter;letter-spacing:.12em;text-transform:uppercase;color:#A1A1AA}
+  .sub{font:600 20px/1.45 Inter;color:#E4E4E7;margin:0}
+  .cta{border:0;border-radius:14px;background:linear-gradient(#EF4A3B,#D52B1E);color:#fff;font:800 18px Inter;padding:15px 34px;box-shadow:0 4px 0 #A51D12}
+  .ghost{border:1.5px solid #52525B;background:transparent;color:#E4E4E7;border-radius:14px;font:700 16px Inter;padding:13px 22px;display:inline-flex;gap:8px;align-items:center}
+  .row{display:flex;gap:14px;justify-content:center;align-items:center}
+  /* avatars cropped from the key art */
+  .av{width:150px;height:150px;border-radius:50%;background-image:url(../../assets/key-art.jpg);background-size:auto 210%;border:6px solid;box-shadow:0 0 0 6px rgba(255,255,255,.06)}
+  .av.cat{border-color:#5B78FF;background-position:12% 46%}.av.dog{border-color:#F0559A;background-position:86% 46%}
+  .who{display:grid;gap:10px;justify-items:center;font:800 18px Inter}
+  .moon{width:90px;height:90px}
+  .dots{display:flex;gap:10px;justify-content:center}.dots i{width:10px;height:10px;border-radius:50%;background:#FFD21F;animation:b 1.2s infinite}.dots i:nth-child(2){animation-delay:.2s}.dots i:nth-child(3){animation-delay:.4s}
+  @keyframes b{50%{opacity:.25}}
+  /* judges count */
+  .tally{display:grid;grid-template-columns:1fr 1fr;gap:26px;width:860px}
+  .bal{background:var(--card);border-radius:22px;padding:22px 24px;display:grid;gap:12px;justify-items:center;border:3px solid}
+  .bal.you{border-color:#5B78FF}.bal.riv{border-color:#F0559A}
+  .bal .who{grid-auto-flow:column;align-items:center;gap:12px}.bal .av{width:64px;height:64px;border-width:4px}
+  .line{display:flex;justify-content:space-between;width:100%;font:600 18px Inter;color:#D4D4D8}.line b{color:#fff}
+  .stars{color:var(--gold);letter-spacing:2px}.stars s{color:#3F3F46;text-decoration:none}
+  .tot{border-top:1px dashed #52525B;padding-top:10px;width:100%;display:flex;justify-content:space-between;align-items:baseline}
+  .tot span{font:700 15px Inter;color:#A1A1AA}.tot b{font:400 46px "Luckiest Guy";color:var(--gold)}
+  .rule{font:600 15px Inter;color:#A1A1AA}
+  /* win / lose */
+  .logo{width:150px;height:150px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 6px rgba(255,210,31,.25)}
+  .burst{position:absolute;inset:0;background:radial-gradient(circle at 50% 42%,rgba(255,210,31,.22),transparent 55%)}
+  .spoon{font:400 70px/1 "Luckiest Guy";color:var(--gold);text-shadow:0 4px 0 #8A6A00}
+  .pic{width:520px;height:347px;border-radius:22px;background-size:cover;border:4px solid #27272A}
+  .crop{width:200px;height:200px;border-radius:26px;background-size:auto 150%;border:5px solid}
+  .two{display:grid;grid-template-columns:auto 1fr;gap:34px;align-items:center;text-align:left;max-width:980px}
+  .two .fun{font-size:44px}
+  .quote{position:relative;background:#FFF7EC;color:#3A2A1E;border-radius:20px;padding:18px 22px;font:600 19px/1.45 Inter;max-width:460px}
+  .quote:before{content:"";position:absolute;left:-14px;top:30px;border:14px solid transparent;border-left:0;border-right-color:#FFF7EC}
+  .quote small{display:block;margin-top:8px;font:800 13px Inter;color:#9D174D}
+  .pair{display:flex;align-items:flex-end;gap:10px}
+  .pair .plus{font:400 40px "Luckiest Guy";color:#71717A;margin-bottom:70px}
+</style></head>
+<body>
+
+<div class="label">① End announcement <i>both players see this</i></div>
+<section class="page"><div class="in">
+  <svg class="moon" viewBox="0 0 90 90" aria-hidden="true"><path d="M60 10 a38 38 0 1 0 20 52 a30 30 0 1 1 -20 -52z" fill="#FFD21F"/><circle cx="20" cy="20" r="3" fill="#FFF7D6"/><circle cx="76" cy="26" r="2" fill="#FFF7D6"/></svg>
+  <span class="kick">Day 5 · the last service is over</span>
+  <h1 class="fun">The doors are closed</h1>
+  <p class="sub">The judges are counting the money…</p>
+  <div class="dots"><i></i><i></i><i></i></div>
+  <div class="row" style="gap:70px;margin-top:6px"><div class="who"><span class="av cat"></span><span style="color:#8EA2FF">You</span></div><div class="who"><span class="av dog"></span><span style="color:#F78BBE">Player 2</span></div></div>
+  <button class="cta">See the count</button>
+</div></section>
+
+<div class="label">② The judges count (winning criteria) <i>both players see this</i></div>
+<section class="page"><div class="in">
+  <span class="kick">The judges count</span>
+  <h1 class="fun" style="font-size:46px">Money + $20 for every star</h1>
+  <div class="tally">
+    <div class="bal you"><div class="who"><span class="av cat"></span><span style="color:#8EA2FF">You</span></div>
+      <div class="line"><span>Cash</span><b>$192</b></div>
+      <div class="line"><span class="stars">★★★<s>★★</s></span><b>3 × $20 = $60</b></div>
+      <div class="tot"><span>Total</span><b>$252</b></div></div>
+    <div class="bal riv"><div class="who"><span class="av dog"></span><span style="color:#F78BBE">Player 2</span></div>
+      <div class="line"><span>Cash</span><b>$166</b></div>
+      <div class="line"><span class="stars">★★<s>★★★</s></span><b>2 × $20 = $40</b></div>
+      <div class="tot"><span>Total</span><b>$206</b></div></div>
+  </div>
+  <span class="rule">If the totals are equal, more stars wins.</span>
+  <button class="cta">And the winner is…</button>
+</div></section>
+
+<div class="label">④ Winning announcement <i>only the winner sees this</i></div>
+<section class="page"><div class="burst"></div><div class="in" style="position:relative">
+  <span class="logo" id="badge" style="display:block;width:190px;height:190px;box-shadow:none"></span>
+  <span class="kick" style="color:#FFE08A">Congratulations</span>
+  <h1 class="fun" style="font-size:64px">You won the</h1>
+  <span class="spoon">GOLDEN SPOON!</span>
+  <p class="sub">You beat Player 2 by $46.</p>
+  <button class="cta">Continue</button>
+</div></section>
+
+<div class="label">⑤ Reward <i>only the winner sees this</i></div>
+<section class="page"><div class="in">
+  <span class="kick">Your reward</span>
+  <h1 class="fun" style="font-size:48px">The Two Spoons is yours again!</h1>
+  <div class="pic" style="background-image:url(../../assets/ending-cat-wins.webp)"></div>
+  <p class="sub">Congratulations! You got your restaurant back.</p>
+  <div class="row"><button class="ghost">📋 Summary</button><button class="ghost">🔗 Share</button></div>
+</div></section>
+
+<div class="label">⑥ Losing announcement <i>only the loser sees this</i></div>
+<section class="page"><div class="in two">
+  <span class="crop" style="background-image:url(../../assets/ending-cat-wins.webp);background-position:96% 62%;border-color:#F0559A"></span>
+  <div style="display:grid;gap:14px"><span class="kick">The judges have decided</span><h1 class="fun">Unfortunately, you lost the competition</h1>
+    <p class="sub">Player 1 won the Golden Spoon by $46.</p><div><button class="cta">Continue</button></div></div>
+</div></section>
+
+<div class="label">⑦ Consolation <i>only the loser sees this</i></div>
+<section class="page"><div class="in" style="gap:26px">
+  <h1 class="fun" style="font-size:44px">Better luck next time!</h1>
+  <div class="row" style="gap:30px;align-items:center">
+    <div class="pair"><span class="crop" style="background-image:url(../../assets/ending-cat-wins.webp);background-position:96% 62%;border-color:#F0559A;width:170px;height:170px"></span><span class="plus">+</span><span class="crop" style="background-image:url(../../assets/ending-cat-wins.webp);background-position:6% 40%;border-color:#5B78FF;width:170px;height:170px"></span></div>
+    <div class="quote">"Good game! Your service was really close tonight. See you at the next Golden Spoon!"<small>— a message from Player 1, the winner</small></div>
+  </div>
+  <div class="row"><button class="ghost">📋 Summary</button></div>
+</div></section>
+
+<script src="../../art.js"></script><script>document.getElementById('badge').innerHTML = ART.badge('end').replace('<svg', '<svg width="190" height="190"');</script>
+</body></html>
