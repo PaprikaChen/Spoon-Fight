@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Ads flow (day 3+)</title>
+<link rel="stylesheet" href="../../style.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Inter+Tight:wght@600;700;800&family=Luckiest+Guy&display=swap">
+<style>
+  :root{--ink:#18181B;--ink2:#52525B;--muted:#71717A;--line:#E4E4E7;--surface:#fff;--bg:#EEF1FB;--you:#2546F0;--rival:#D61F69;--red:#E8392B;--gold:#FFD21F;--green:#15803D}
+  body{margin:0;padding:24px;background:#DADFEE;font-family:Inter,system-ui,sans-serif;color:var(--ink);display:grid;gap:30px}
+  .label{font:800 15px Inter}
+  .frame{width:1100px;height:720px;border-radius:24px;background:var(--bg);position:relative;overflow:hidden;display:grid;place-items:center;box-shadow:0 2px 0 rgba(0,0,0,.06)}
+  .bar{position:absolute;left:0;right:0;top:0;height:58px;display:flex;align-items:center;gap:16px;padding:0 24px;background:#F6F7FC;border-bottom:1px solid var(--line);font:700 13px Inter;color:var(--muted)}
+  .bar .d{font:400 18px "Luckiest Guy";color:var(--red)} .bar .steps{display:flex;gap:16px} .bar .on{color:var(--red)} .bar .cash{margin-left:auto;font:800 16px Inter;color:var(--ink)}
+  .card{background:var(--surface);border-radius:22px;box-shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px rgba(30,30,60,.08);padding:28px 32px;display:grid;gap:16px}
+  .fun{font:400 40px/1.05 "Luckiest Guy";color:#7A1A0E;margin:0;letter-spacing:.01em}
+  .sub{font:500 16px/1.45 Inter;color:var(--ink2);margin:0}
+  .cta{border:0;border-radius:14px;background:linear-gradient(#EF4A3B,#D52B1E);color:#fff;font:800 18px Inter;padding:15px 28px;box-shadow:0 4px 0 #A51D12;justify-self:center}
+  .back{appearance:none;border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;font:700 14px Inter;color:var(--ink2)}
+  .head{display:flex;align-items:center;gap:14px}.head .money{margin-left:auto;display:flex;align-items:center;gap:8px;font:800 20px Inter}
+  .chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font:700 12px Inter}
+  /* 1 intro */
+  .intro{width:560px;text-align:center;justify-items:center;padding:40px}
+  /* 2 budget */
+  .budget{width:720px}
+  .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .tile{border:2px solid var(--line);border-radius:18px;padding:18px;display:grid;justify-items:center;gap:8px;text-align:center;background:#FAFAFB}
+  .tile .em{font-size:44px;line-height:1}.tile b{font:800 18px Inter}.tile span{font:500 13px/1.35 Inter;color:var(--muted)}
+  .tile.now{border-color:var(--red);background:#FFF4F2;box-shadow:0 0 0 4px rgba(232,57,43,.12)}
+  .tile .when{font:800 11px Inter;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)} .tile.now .when{color:var(--red)}
+  /* 3,4 lists */
+  .list{width:820px}
+  .rows{display:grid;gap:10px}
+  .card .cta{width:auto;display:inline-flex;justify-self:center;padding:15px 34px}
+  .hand{display:flex;gap:18px;justify-content:center;padding:6px 0}
+  .hand .acard{width:200px}
+  .row{display:grid;grid-template-columns:56px 1fr auto 150px;align-items:center;gap:16px;border:1.5px solid var(--line);border-radius:16px;padding:10px 14px;background:#fff}
+  .row .ic{width:56px;height:56px;border-radius:14px;display:grid;place-items:center;font-size:30px}
+  .row.mine .ic{background:#E8ECFF}.row.theirs .ic{background:#FDE6EF}
+  .row .nm b{font:800 16px Inter;display:block}.row .nm span{font:500 13px Inter;color:var(--muted)}
+  .row .eff{font:800 15px Inter}.row.mine .eff{color:var(--you)}.row.theirs .eff{color:var(--rival)}
+  .step{display:flex;align-items:center;justify-content:flex-end;gap:10px}
+  .step button{width:34px;height:34px;border-radius:10px;border:1.5px solid var(--line);background:#fff;font:800 18px Inter;color:var(--ink)}
+  .step .n{font:800 18px Inter;width:20px;text-align:center}
+  .step .pr{font:800 15px Inter;color:var(--ink2);margin-right:6px}
+  .row.sel{border-color:var(--you);background:#F7F8FF}.row.theirs.sel{border-color:var(--rival);background:#FFF6FA}
+  .note{display:grid;gap:4px;background:#FFF7E6;border-radius:14px;padding:12px 14px;font:600 14px/1.4 Inter;color:#7A4A10}
+  .sumline{display:flex;justify-content:space-between;align-items:center;font:600 14px Inter;color:var(--ink2)}
+  /* 5 hidden */
+  .hidden{width:620px;text-align:center;justify-items:center}
+  .env{width:150px;height:104px;border-radius:12px;background:#FDE6EF;border:2.5px solid var(--rival);position:relative;display:grid;place-items:center}
+  .env:before{content:"";position:absolute;inset:0;background:linear-gradient(155deg,transparent 49%,var(--rival) 50%,transparent 52%),linear-gradient(25deg,transparent 49%,var(--rival) 50%,transparent 52%);opacity:.5;border-radius:10px}
+  .env b{font:400 48px "Luckiest Guy";color:var(--rival);position:relative}
+  /* 6 received */
+  .recv{width:760px;justify-items:center;text-align:center}
+  .ads{display:flex;gap:22px}
+  .ad{width:220px;border-radius:18px;border:3px solid var(--rival);background:#fff;padding:16px;display:grid;gap:8px;justify-items:center}
+  .ad .em{font-size:52px}.ad b{font:800 17px Inter}.ad .big{font:400 30px "Luckiest Guy";color:var(--rival)}.ad span{font:500 13px/1.35 Inter;color:var(--ink2)}
+</style></head>
+<body>
+<script src="../../engine.js"></script>
+
+<div class="label">① Day 3 intro (new landing page for the day)</div>
+<div class="frame"><div class="bar"><span class="d">DAY 3 OF 5</span><span class="steps"><span class="on">Ads</span><span>Staff</span><span>Market</span><span>Service</span><span>Recap</span></span><span class="cash">$50</span></div>
+  <div class="card intro">
+    <p class="sub" style="font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:13px">Day 3</p>
+    <h1 class="fun" style="font-size:52px">Get the word out!</h1>
+    <svg width="200" height="140" viewBox="0 0 200 140" aria-hidden="true">
+      <path d="M40 60 l80 -40 v100 l-80 -40z" fill="#E8392B" stroke="#2B1D14" stroke-width="5" stroke-linejoin="round"/>
+      <rect x="18" y="52" width="26" height="36" rx="6" fill="#FFD21F" stroke="#2B1D14" stroke-width="5"/>
+      <ellipse cx="122" cy="70" rx="12" ry="50" fill="#FFF7EC" stroke="#2B1D14" stroke-width="5"/>
+      <path d="M50 86 l10 34 h18 l-8 -26" fill="#F4A261" stroke="#2B1D14" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M150 40 l24 -14 M156 70 h28 M150 100 l24 14" stroke="#E8392B" stroke-width="6" stroke-linecap="round"/></svg>
+    <p class="sub">From today you can buy <b>ads</b>: some bring guests to your restaurant, some cause trouble for your rival.</p>
+    <button class="cta">Plan my ads</button>
+  </div></div>
+
+<div class="label">② Budget: what today's money is for</div>
+<div class="frame"><div class="bar"><span class="d">DAY 3 OF 5</span><span class="steps"><span class="on">Ads</span><span>Staff</span><span>Market</span><span>Service</span><span>Recap</span></span><span class="cash">$50</span></div>
+  <div class="card budget">
+    <div class="head"><h1 class="fun" style="font-size:34px">Before dinner · Budget</h1></div>
+    <p class="sub">Today your money goes to three things. Ads come first, so keep enough for the rest.</p>
+    <div class="tiles">
+      <div class="tile now"><span class="when">Now</span><span class="em">📣</span><b>Ads</b><span>Bring guests, or trouble your rival. Paid just before dinner.</span></div>
+      <div class="tile"><span class="when">Next</span><span class="em">🐰</span><b>Staff</b><span>$6 a day for each server you keep.</span></div>
+      <div class="tile"><span class="when">Then</span><span class="em">🥕</span><b>Food</b><span>Buy plates at the Market. Leftovers go bad.</span></div>
+    </div>
+    <button class="cta">Next</button>
+  </div></div>
+
+<div class="label">③ Ads for your restaurant (you see the effect right away)</div>
+<div class="frame"><div class="bar"><span class="d">DAY 3 OF 5</span><span class="steps"><span class="on">Ads</span><span>Staff</span><span>Market</span><span>Service</span><span>Recap</span></span><span class="cash">$50</span></div>
+  <div class="card list">
+    <div class="head"><button class="back">← Budget</button><h1 class="fun" style="font-size:30px">Ads for your restaurant</h1></div>
+    <div class="hand" id="mine"></div>
+    <div class="sumline"><span>Tonight, with these: <b style="color:var(--you)">about 14 → 15 guests</b></span><span>Ads so far: <b>$5</b></span></div>
+    <button class="cta">Next</button>
+  </div></div>
+
+<div class="label">④ Ads for your opponent (they only learn the effect right before doors open)</div>
+<div class="frame"><div class="bar"><span class="d">DAY 3 OF 5</span><span class="steps"><span class="on">Ads</span><span>Staff</span><span>Market</span><span>Service</span><span>Recap</span></span><span class="cash">$50</span></div>
+  <div class="card list">
+    <div class="head"><button class="back">← Budget</button><h1 class="fun" style="font-size:30px">Ads for your opponent</h1></div>
+    <div class="note"><span>🤫 Your opponent can't see what these do until right before the doors open for dinner.</span><span>But remember: that means you can't see what ads they placed for you either!</span></div>
+    <div class="hand" id="theirs"></div>
+    <div class="sumline"><span></span><span>Ads so far: <b>$11</b></span></div>
+    <button class="cta">Confirm ads</button>
+  </div></div>
+
+<div class="label">⑤ Hidden before dinner (you know how many, not which)</div>
+<div class="frame"><div class="bar"><span class="d">DAY 3 OF 5</span><span class="steps"><span class="on">Ads</span><span>Staff</span><span>Market</span><span>Service</span><span>Recap</span></span><span class="cash">$39</span></div>
+  <div class="card hidden">
+    <h1 class="fun" style="font-size:38px">Opponent ads: 2</h1>
+    <p class="sub">Player 2 placed 2 ads for your restaurant. You'll find out what they do right before the doors open.</p>
+    <div style="display:flex;gap:28px;margin:8px 0"><div class="env" style="transform:rotate(-6deg)"><b>?</b></div><div class="env" style="transform:rotate(5deg)"><b>?</b></div></div>
+    <button class="cta">Ready</button>
+  </div></div>
+
+<div class="label">⑥ Ads received (before the doors open)</div>
+<div class="frame"><div class="bar"><span class="d">DAY 3 OF 5</span><span class="steps"><span>Ads</span><span>Staff</span><span>Market</span><span class="on">Service</span><span>Recap</span></span><span class="cash">$28</span></div>
+  <div class="card recv">
+    <h1 class="fun" style="font-size:40px">Ads received</h1>
+    <p class="sub">Player 2 placed these ads for your restaurant. Here's what they do tonight.</p>
+    <div class="ads">
+      <div class="ad"><span class="em">👎</span><b>Bad review</b><span class="big">−2 guests</span><span>A bad review keeps 2 of your guests away tonight.</span></div>
+      <div class="ad"><span class="em">📦</span><b>Corner the rush supplier</b><span class="big">+$3 rush</span><span>Each plate you rush tonight costs $3 more.</span></div>
+    </div>
+    <button class="cta">Open restaurant</button>
+  </div></div>
+
+<script>
+// The card faces exactly as the game draws them (adFace / adCard copied from app.js; the rival is "Player 2" here)
+const A = CFG.ads, esc = t => String(t), them = 'Player 2';
+const KW = { SURE: ['✓', 'Always happens.'], GAMBLE: ['🎲', 'Might do nothing at all.'], IF: ['?', 'Only works if something else is true.'], LASTING: ['∞', 'Keeps working on later days.'] };
+function adFace(id) {
+  const a = A[id], pct = x => `${Math.round(x * 100)}%`;
+  switch (id) {
+    case 'flyer': return { art: '📄', eff: `+${a.n} 👤`, line: 'Tonight only', kw: 'SURE' };
+    case 'coupon': return { art: '🎟️', eff: `+${a.n} 👤`, line: `Each pays $${a.off} less`, kw: 'SURE' };
+    case 'stall': return { art: '🧺', eff: `+${a.n} 👤 +${a.food} 🍽`, line: 'Comes with a free plate', kw: 'SURE' };
+    case 'review': return { art: '👎', eff: `−${a.n} 👤`, line: `${them} gets fewer guests`, kw: 'SURE' };
+    case 'swamp': return { art: '🌊', eff: `+${a.n} 👤`, line: 'Helps them if they have room', kw: 'IF', pct: "THEY'RE FULL" };
+    case 'corner': return { art: '📦', eff: `+$${a.extra} 🍽`, line: 'Only if they rush food', kw: 'IF', pct: 'THEY RUSH FOOD' };
+  }
+}
+const shortName = { stall: 'Market stall', corner: 'Corner supplier' };
+const cardName = id => shortName[id] || A[id].name;
+const kwChip = (kw, pct) => `<span class="kw ${kw.toLowerCase()}">${KW[kw][0]} ${kw}${pct ? ' ' + pct : ''}</span>`;
+function adCard(id, on) {
+  const a = A[id], f = adFace(id), side = a.side === 'self' ? 'you' : 'rival';
+  return `<button type="button" class="acard ${side} ${on ? 'on' : ''}"><span class="ac-top"><span class="ac-nm">${cardName(id)}</span><span class="coin">$${a.price}</span></span>
+    <span class="ac-art">${f.art}${a.loc ? `<span class="ac-loc">${a.loc === 'city' ? 'CITY' : 'COUNTRY'}</span>` : ''}</span>
+    <span class="ac-eff">${f.eff}</span><span class="ac-line">${f.line}</span>${kwChip(f.kw, f.pct)}${on ? '<span class="ac-played">✓ PLAYED</span>' : ''}</button>`;
+}
+document.getElementById('mine').innerHTML = adCard('stall', true) + adCard('flyer') + adCard('coupon');
+document.getElementById('theirs').innerHTML = adCard('review', true) + adCard('corner') + adCard('swamp');
+</script>
+</body></html>
