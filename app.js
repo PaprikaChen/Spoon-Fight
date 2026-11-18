@@ -1495,7 +1495,7 @@ function finalHTML(s) {
   else if (meWon) lead = 'You led for most of the game.';
   else lead = `${esc(nameOf(o))} was ahead for most of the game.`;
   const served = p.history.reduce((x, h) => x + h.served, 0), came = p.history.reduce((x, h) => x + h.demand, 0), spoiled = p.history.reduce((x, h) => x + h.spoiled, 0);
-  const adsSpent = -p.history.reduce((x, h) => x + h.ledger.filter(l => /^Ad cards/.test(l.label)).reduce((y, l) => y + l.amt, 0), 0);
+  const adsSpent = -p.history.reduce((x, h) => x + h.ledger.filter(l => /^Ads (×|refunded)/.test(l.label)).reduce((y, l) => y + l.amt, 0), 0);
   const bestDay = p.history.reduce((bd, h) => (round2(h.income + h.spend) > round2(bd.income + bd.spend) ? h : bd), p.history[0] || { income: 0, spend: 0, round: 1 });
   return `<section class="final-hero" aria-label="Result"><img src="${IMG.art}" alt="">
     <div class="in"><div style="display:grid;gap:6px">${big}<p>${line}</p></div><div class="scores">${card(first, 1)}${card(other(first), 2)}</div></div></section>
