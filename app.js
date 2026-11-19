@@ -615,7 +615,7 @@ function howtoHTML() {
         <li>${n(3)}<span>Your rival is doing the same, and can <b>play tricks on you</b>. You can play tricks back.</span></li></ol>
         <span style="font-size:13px;color:var(--muted)">That's enough to start. The game explains each step as you go.</span></section>
       <div><h2 style="font-size:13px;font-family:var(--body);color:var(--muted);margin-bottom:6px">Want more detail?</h2>
-      ${sec('pick', 'Picking your restaurant', 'Countryside or City, and paying rent', `<p>You both start with $${C.startCash} and ${C.startStars} stars, and ${C.baseDemand} regular guests come every day.</p>
+      ${sec('pick', 'Picking your restaurant', 'Countryside or City, and paying rent', `<p>You both start with $${C.startCash} and ${C.startStars} stars, and ${C.regulars.start} regular guests come on day 1. After that, your stars change how many regulars come (see Stars).</p>
         <table><thead><tr><th></th><th>Countryside</th><th>City</th></tr></thead><tbody>
         <tr><td>Costs to open</td><td>$${L.country.open}</td><td>$${L.city.open}</td></tr><tr><td>Rent every morning</td><td>$${L.country.rent}</td><td>$${L.city.rent}</td></tr>
         <tr><td>Tables</td><td>${L.country.tables}</td><td>${L.city.tables}</td></tr><tr><td>Each bunny costs a day</td><td>$${C.staff.wage.country}</td><td>$${C.staff.wage.city}</td></tr><tr><td>Each guest pays</td><td><b>$${L.country.price}</b></td><td><b>$${L.city.price}</b></td></tr></tbody></table>
@@ -629,7 +629,7 @@ function howtoHTML() {
       ${sec('stars', 'Stars', 'How to earn them and how to lose them', `<p>You start with ${C.startStars} stars. They change at the end of each day.</p>
         <ul><li><b>You gain a star</b> when nobody left unhappy.</li><li><b>You lose stars</b> when guests leave unhappy: 1 star for 1 to 3 guests, 2 stars for 4 or more.</li></ul>
         <p><b>Saying sorry helps.</b> After service you can give each guest you turned away a $${C.voucher} voucher, so they don't count against you.</p>
-        <p><b>Why stars matter.</b> More stars bring extra guests. Fewer stars mean some regulars stay home. Each star also pays you $${C.starValue} at the end of every day, and counts $${C.starValue} again in the final score.</p>`)}
+        <p><b>Why stars matter.</b> Every morning, yesterday's stars change how many regulars come, and the change sticks: 1 star ${sgn(C.regulars.change[1])}, 2 stars ${sgn(C.regulars.change[2])}, 3 stars no change, 4 stars ${sgn(C.regulars.change[4])}, 5 stars ${sgn(C.regulars.change[5])} regulars a day. Never fewer than ${C.regulars.min}, and at most ${C.regulars.max.country} in the Countryside and ${C.regulars.max.city} in the City. Each star also pays you $${C.starValue} at the end of every day, and counts $${C.starValue} again in the final score.</p>`)}
       ${sec('surprises', 'Surprises', 'Secret offers, and things that happen during service', `<p><b>Secret offers.</b> Some mornings you get an offer only you can see:</p>
         <ul><li><b>A shady deal:</b> take $${C.shady.cash} now. But on every day after, there's a 1 in 6 chance an inspector catches you. If that happens you pay $${C.shady.fine} and lose a star.</li></ul>
         <p><b>During service.</b> A fight (${C.service.fightStaff} bunnies get hurt and go home for the day, still paid), a storm, a proposal, someone asking for free food. A pop-up explains it and the clock stops while you decide.</p>
@@ -1104,6 +1104,7 @@ function needMorning(s) {
 }
 const SUNRISE = `<svg class="sunrise" viewBox="0 0 160 90" aria-hidden="true"><path d="M10 80 h140" stroke="#2B1D14" stroke-width="5" stroke-linecap="round"/><path d="M30 80 a50 50 0 0 1 100 0z" fill="#FFD21F" stroke="#2B1D14" stroke-width="5"/>
   <path d="M80 12 v-10 M36 30 l-8 -8 M124 30 l8 -8 M18 62 h-10 M142 62 h10" stroke="#F4A261" stroke-width="5" stroke-linecap="round"/></svg>`;
+const sgn = n => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0');
 function morningHTML(s) {
   const S = app.S, p = S.players[s], m = S.morning[s] || {}, L = CFG.loc[p.loc];
   const prev = p.history[p.history.length - 1], fight = prev && prev.ledger.some(x => /hurt in a fight/.test(x.label));
@@ -1113,6 +1114,15 @@ function morningHTML(s) {
   if (m.arrived) list.push(ev('good', '📦', `${plural(m.arrived, 'plate')} arrived`, "Your Regular order from yesterday is in the kitchen."));
   if (fight) list.push(ev('good', '🐰', 'Your hurt bunnies are back', 'They are ready to work again today.'));
   if (!list.length) list.push(ev('info', '🌙', 'A quiet night', 'Nothing happened overnight.'));
+  const rg = m.regulars;
+  if (rg) {
+    const stars = plural(rg.stars, 'star'), now = `${rg.to} regulars come every day now.`;
+    if (rg.to > rg.from) list.unshift(ev('good', '⭐', `${sgn(rg.to - rg.from)} regulars`, `Your ${stars} got people talking. ${now}`));
+    else if (rg.to < rg.from) list.unshift(ev('bad', '📉', `${sgn(rg.to - rg.from)} regulars`, `With ${stars}, fewer people want to eat here. ${now}`));
+    else if (rg.change > 0) list.unshift(ev('good', '⭐', 'Fully booked', `Your ${stars} keep the room full: ${rg.to} regulars, as many as your restaurant can get.`));
+    else if (rg.change < 0) list.unshift(ev('bad', '📉', 'Hardly anyone left', `With ${stars}, only your ${rg.to} most loyal regulars still come.`));
+    else list.unshift(ev('info', '⭐', `${rg.to} regulars`, `Your ${stars} keep your regulars coming, the same as yesterday.`));
+  }
   if (S.round === CFG.rounds - 1) list.push(ev('info', '⚡', 'Tomorrow is the last day', 'The Market will only sell Express food.'));
   if (S.round === CFG.rounds) list.push(ev('info', '🏁', 'Last day!', 'Tonight decides who wins the Golden Spoon.'));
   return `<section class="adsflow"><div class="card2 adsc center morn">${SUNRISE}<span class="kick">Next day</span><h1 class="funt big">Day ${S.round}</h1>

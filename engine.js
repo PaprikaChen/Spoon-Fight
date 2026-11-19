@@ -11,15 +11,15 @@ const CFG = {
   // Bunnies stay from day to day. Letting one go costs severance (team rule, Nov 19): fire × daily wage for each bunny,
   //   the same for every bunny. Wages are TBD.
   staff: { wage: { country: 14, city: 18 }, fire: 1.5, perSection: 2 },
-  baseDemand: 14,
   // Ad cards start on this day (days before it have no Ads step). From then on Ads is the first step of the day,
   // and the cards stay face down (only the counts are public) until just before service.
   adsFrom: 3,
   // Day 1 has no Market: the Golden Spoon gives each restaurant this much free food instead (most of it gets wasted: that's the lesson)
   freeFood: 12,
-  // Stars: each star above 3 adds perStar maybe-customers (each comes with `chance`);
-  //        each star below 3 puts perStar regulars at risk (each stays away with `loseChance`)
-  rep: { perStar: 2, chance: 0.5, loseChance: 0.5 },
+  // Regulars (team rule, Nov 19): `start` regulars come on day 1. Every morning after that, yesterday's stars change
+  //   the number for good: change[stars] is added to yesterday's regulars, never below `min` or above max[location].
+  //   It adds up, so a few good days in a row bring a crowd, and a few bad days empty the room.
+  regulars: { start: 14, change: { 1: -4, 2: -2, 3: 0, 4: 3, 5: 5 }, min: 6, max: { country: 35, city: 25 } },
   // Live online market: a grid of food bundles, both players click at the same time and race for the same bundles.
   //   bundles = how many plates each bundle makes (team grid, playtest Nov 15: 12 Regular + 12 Express = 24),
   //   shuffled into new spots every day. price = per plate, so a bundle costs n × price.
@@ -135,7 +135,7 @@ function severance(p, fired, cash = p.cash) {
 function staffCost(p, n, cash = p.cash) { return round2(n * wageOf(p) + severance(p, Math.max(0, p.staff.length - n), cash)); }
 
 function newPlayer() {
-  return { loc: null, cash: CFG.startCash, stars: CFG.startStars, tables: 0, staff: [], ingr: 0, pending: 0, wom: 0,
+  return { loc: null, cash: CFG.startCash, stars: CFG.startStars, regulars: CFG.regulars.start, tables: 0, staff: [], ingr: 0, pending: 0, wom: 0,
     loan: false, shadyFrom: null, bankrupt: false, ledger: [], history: [] };
 }
 function money(p, label, amt) { p.cash = round2(p.cash + amt); p.ledger.push({ label, amt: round2(amt) }); }
@@ -144,8 +144,7 @@ function note(p, label) { p.ledger.push({ label, amt: null }); }
 // Expected customers before the doors open, for hints. selfCards = your own ad cards (known).
 // looks = extra guests the rival's hidden cards seem to bring (adBump); counted as sure guests until the cards flip
 function expectedDemand(p, selfCards = [], looks = 0) {
-  const d = p.stars - CFG.startStars, per = CFG.rep.perStar;
-  const rep = d > 0 ? d * per * CFG.rep.chance : -(-d) * per * CFG.rep.loseChance;
+  const rep = 0;   // stars already changed today's regulars (p.regulars)
   let ads = looks, adMin = looks, adMax = looks;
   for (const id of selfCards) {
     const A = CFG.ads[id];
@@ -153,9 +152,8 @@ function expectedDemand(p, selfCards = [], looks = 0) {
     else if (A.chance) { ads += A.n * A.chance; adMax += A.n; }
     else { ads += A.n; adMin += A.n; adMax += A.n; }
   }
-  const base = CFG.baseDemand + p.wom;
-  return { base, rep, ads, total: base + rep + ads,
-    min: base - (d < 0 ? -d * per : 0) + adMin, max: base + (d > 0 ? d * per : 0) + adMax };
+  const base = (p.regulars ?? CFG.regulars.start) + p.wom;
+  return { base, rep, ads, total: base + ads, min: base + adMin, max: base + adMax };
 }
 function capacityOf(p) {
   return { tables: p.tables, staff: p.staff.length, ingr: p.ingr, cap: Math.min(p.tables, p.ingr) };
@@ -179,6 +177,10 @@ function startRound(S) {
         m.robbed = Math.min(CFG.robbery.cap, round2(p.cash / 2));
         money(p, 'Robbed overnight', -m.robbed);
       }
+    }
+    if (S.round > 1) {
+      const R = CFG.regulars, from = p.regulars, to = Math.max(R.min, Math.min(R.max[p.loc], from + (R.change[p.stars] || 0)));
+      p.regulars = to; m.regulars = { stars: p.stars, from, to, change: R.change[p.stars] || 0 };
     }
     money(p, 'Rent', -L.rent);
     p.ingr = p.pending; p.pending = 0;
@@ -230,17 +232,6 @@ function prepService(S, s) {
     info.push({ k: 'inspect', ...sc.inspection });
   }
   if (ev === 'weather' || ev === 'protest') { sc.fewer = C.fewer; info.push({ k: 'event', ev, n: C.fewer }); }
-  // Word of mouth from stars
-  const diff = p.stars - CFG.startStars;
-  let repGain = 0, repLoss = 0;
-  if (diff > 0) for (let i = 0; i < diff * CFG.rep.perStar; i++) {
-    const roll = d100(), need = Math.round(CFG.rep.chance * 100), ok = roll <= need;
-    if (ok) repGain++; info.push({ k: 'rep', roll, need, ok });
-  }
-  if (diff < 0) for (let i = 0; i < -diff * CFG.rep.perStar; i++) {
-    const roll = d100(), need = Math.round(CFG.rep.loseChance * 100), ok = roll <= need;
-    if (ok) repLoss++; info.push({ k: 'lose', roll, need, ok });
-  }
   // Flip every card in front of this shop, in a shuffled order. Groups keep `from` so the page can colour the guests.
   const cards = shuffle([...mine.map(id => ({ id, from: 'self' })), ...theirs.map(id => ({ id, from: 'rival' }))], r);
   let minus = 0;
@@ -263,10 +254,10 @@ function prepService(S, s) {
     info.push(f);
   }
   if (S.reveals[s].rival.includes('poach')) { info.push({ k: 'poached', n: A.poach.n }); groups.push({ n: A.poach.n, price: L.price, src: 'poached', from: 'self' }); }
-  const base = Math.max(0, CFG.baseDemand + repGain - repLoss - sc.fewer - minus);
+  const base = Math.max(0, p.regulars - sc.fewer - minus);
   // Walk-ins: regulars plus old word-of-mouth guests (plain colour)
   sc.walkins = base + p.wom;
-  sc.repGain = repGain; sc.repLoss = repLoss; sc.base = base;
+  sc.base = base;
   sc.tableGuests = sc.walkins + groups.filter(g => !g.noTable).reduce((a, g) => a + g.n, 0);
   sc.orders = groups.filter(g => g.noTable).reduce((a, g) => a + g.n, 0);
   sc.plates = p.ingr + sc.stallFood; sc.price = L.price;
@@ -313,7 +304,7 @@ function finishService(S, s, res) {
   return { served, delivered, turned, unhappy: turned, sales, tip, rush: { n: rushN, cost }, food: sc.mid === 'food' ? (give ? 'give' : 'refuse') : null,
     fight: sc.mid === 'fight', propose: sc.mid === 'propose' ? sc.proposeOk : null, demand: sc.tableGuests + sc.orders, orders: sc.orders,
     tables: p.tables, staff: sc.staff.length, ingr: p.ingr,
-    base: sc.base, repGain: sc.repGain, repLoss: sc.repLoss, inspection: sc.inspection || null, event: sc.event, vouchers: 0 };
+    base: sc.base, inspection: sc.inspection || null, event: sc.event, vouchers: 0 };
 }
 
 // A simple stand-in player for tests and fast-forward: serves what the plates allow, rushes nothing

@@ -223,3 +223,36 @@ console.log(wins, reasons, { avgServed: (stats.served / stats.days).toFixed(2), 
   if (bad.reveals.p1.ok || bad.reveals.p1.rival.length || bad.players.p1.cash !== good.players.p1.cash + C.ads.fake.price) { console.log('wrong bump should cancel the ads and refund', bad.reveals.p1, bad.players.p1.cash, good.players.p1.cash); process.exit(1); }
   console.log('fake ad looks like guests OK');
 }
+
+// Regulars (team rule, Nov 19): every morning yesterday's stars add change[stars], kept between min and max[location]
+{
+  const R = E.CFG.regulars, seen = { up: 0, down: 0, cap: 0, floor: 0 };
+  for (let g = 0; g < 300; g++) {
+    const logs = { p1: [], p2: [] }, rnd = (() => { let a = g + 1; return () => ((a = (a * 16807) % 2147483647) / 2147483647); })();
+    let S, prev = { p1: null, p2: null };
+    for (let i = 0; i < 400; i++) {
+      S = E.simulate('reg' + g, logs);
+      if (S.phase === 'over') break;
+      for (const s of ['p1', 'p2']) {
+        const m = S.morning[s] && S.morning[s].regulars, p = S.players[s];
+        if (S.round === 1 && p.loc && p.regulars !== R.start) { console.log('day 1 regulars wrong', p.regulars); process.exit(1); }
+        if (m && prev[s] !== S.round) {
+          prev[s] = S.round;
+          const want = Math.max(R.min, Math.min(R.max[p.loc], m.from + R.change[m.stars]));
+          if (m.to !== want || p.regulars !== want) { console.log('regulars wrong', S.round, s, m, p.regulars, want); process.exit(1); }
+          if (m.to > m.from) seen.up++; if (m.to < m.from) seen.down++; if (m.to === R.max[p.loc]) seen.cap++; if (m.to === R.min) seen.floor++;
+        }
+      }
+      const s = S.waiting.p1 ? 'p1' : S.waiting.p2 ? 'p2' : null; if (!s) break;
+      const k = S.waiting[s], loc = g % 2 ? 'city' : 'country';
+      // A player who serves everyone (stars go up) or nobody (stars go down), so both directions get tested
+      const good = (g + (s === 'p1' ? 0 : 1)) % 3 !== 0;
+      const sc = S.script && S.script[s];
+      logs[s].push({ pick: { k, loc }, morning: { k }, invest: { k, staff: [0, 1, 2, 3, 4, 5] }, market: { k, buys: [...Array(E.CFG.market.stock).keys()].filter(i => (i % 2 === 0) === (s === 'p1')) },
+        commit: { k, h: E.adHash({ self: [], rival: [] }, 'x'), nSelf: 0, nRival: 0, cost: 0, bump: 0 }, reveal: { k, self: [], rival: [], salt: 'x' },
+        service: S.phase !== 'service' ? null : { k, res: good ? E.autoService(S, s) : { served: 0, delivered: 0, unhappy: sc.tableGuests, earned: 0, rushN: 0 } }, voucher: { k, n: 0 }, report: { k } }[S.phase]);
+    }
+  }
+  if (!seen.up || !seen.down || !seen.floor) { console.log('regulars never moved both ways', seen); process.exit(1); }
+  console.log('regulars follow the stars OK', seen);
+}
