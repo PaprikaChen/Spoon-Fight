@@ -463,6 +463,8 @@ function rivalCardsNote(s) {
   return n ? `<span class="pill2 rivalcards">📣 ${esc(nameOf(o))} placed ${plural(n, 'ad')} for you · revealed before dinner</span>` : '';
 }
 const PRIVATE_LINES = ['Shady deal', 'Reservation paid', 'Inspector fine'];
+// A chance as "1 in N" for the shady deal text (0.2 → "1 in 5")
+const oneIn = c => `1 in ${Math.round(1 / c)}`;
 const PRIVATE_WHY = ['reservation had no seat −1', 'inspector −1'];
 // The opening story (wording from the agreed mockups): one line per card
 const INTRO = [
@@ -631,7 +633,7 @@ function howtoHTML() {
         <p><b>Saying sorry helps.</b> After service you can give each guest you turned away a $${C.voucher} voucher, so they don't count against you.</p>
         <p><b>Why stars matter.</b> Every morning, yesterday's stars change how many regulars come, and the change sticks: 1 star ${sgn(C.regulars.change[1])}, 2 stars ${sgn(C.regulars.change[2])}, 3 stars no change, 4 stars ${sgn(C.regulars.change[4])}, 5 stars ${sgn(C.regulars.change[5])} regulars a day. Never fewer than ${C.regulars.min}, and at most ${C.regulars.max.country} in the Countryside and ${C.regulars.max.city} in the City. Each star also pays you $${C.starValue} at the end of every day, and counts $${C.starValue} again in the final score.</p>`)}
       ${sec('surprises', 'Surprises', 'Secret offers, and things that happen during service', `<p><b>Secret offers.</b> Some mornings you get an offer only you can see:</p>
-        <ul><li><b>A shady deal:</b> take $${C.shady.cash} now. But on every day after, there's a 1 in 6 chance an inspector catches you. If that happens you pay $${C.shady.fine} and lose a star.</li></ul>
+        <ul><li><b>A shady deal:</b> take $${C.shady.cash} now. But on every day after, there's a ${oneIn(C.shady.catch)} chance an inspector catches you. If that happens you pay $${C.shady.fine} and lose a star.</li></ul>
         <p><b>During service.</b> A fight (${C.service.fightStaff} bunnies get hurt and go home for the day, still paid), a storm, a proposal, someone asking for free food. A pop-up explains it and the clock stops while you decide.</p>
         <p><b>Overnight.</b> There's a small chance of a break-in that takes some of your cash.</p>`)}
       ${sec('friend', 'Playing with a friend', 'Room codes, reconnecting and keyboard shortcuts', `<ul><li>One of you clicks <b>Create a room</b> and sends the 4-letter code. The other types it under <b>Join a game</b>.</li>
@@ -776,9 +778,9 @@ function offerHTML(s, f) {
   {
     const active = p.shadyFrom !== null;
     h = active ? `The stranger is back with another $${CFG.shady.cash}` : `A stranger offers you $${CFG.shady.cash}`;
-    sub = active ? `Same deal as before: cheap food with no health papers. You already took one on day ${p.shadyFrom}, so the inspector is already watching you (1 in 6 each day). Taking this one doesn't change that chance.`
+    sub = active ? `Same deal as before: cheap food with no health papers. You already took one on day ${p.shadyFrom}, so the inspector is already watching you (${oneIn(CFG.shady.catch)} each day). Taking this one doesn't change that chance.`
       : "They want you to take a delivery of cheap food that has no health papers, and keep quiet about it. That's against the rules: if a health inspector finds out, you pay a fine and lose a star.";
-    opts = opt('accept', `Take the $${CFG.shady.cash}`, [`Now: <b class="pos">+$${CFG.shady.cash}</b>`, `Every day after: 1 in 6 chance an inspector catches you: <b class="neg">−$${CFG.shady.fine} and −1 star</b>`])
+    opts = opt('accept', `Take the $${CFG.shady.cash}`, [`Now: <b class="pos">+$${CFG.shady.cash}</b>`, `Every day after: ${oneIn(CFG.shady.catch)} chance an inspector catches you: <b class="neg">−$${CFG.shady.fine} and −1 star</b>`])
       + opt('decline', 'Say no', ['Nothing happens']);
     go = f.choice === 'accept' ? 'Take the money · set up →' : 'Say no · set up →';
   }

@@ -70,7 +70,7 @@ const CFG = {
   // goes on with the player's current choices. Page-only (the engine never reads the clock). TBD.
   stageSeconds: 180,
   // Each star is worth starValue: paid into your cash at the end of every day, and counted again in the final score
-  starValue: 20, shady: { cash: 15, fine: 20 }
+  starValue: 20, shady: { cash: 50, fine: 20, catch: 0.2 }
 };
 CFG.market.stock = CFG.market.bundles.reg.length + CFG.market.bundles.exp.length;
 const round2 = x => Math.round(x * 100) / 100;
@@ -227,8 +227,9 @@ function prepService(S, s) {
   }
   sc.event = ev;
   if (p.shadyFrom !== null && S.round > p.shadyFrom) {
-    const roll = d6(S.seed, `shady${s}${S.round}`);
-    sc.inspection = { roll, caught: roll === 1 };
+    // Every day after taking the deal: a `shady.catch` chance the inspector catches you
+    const roll = rand(S.seed, `shady${s}${S.round}`)();
+    sc.inspection = { roll, caught: roll < CFG.shady.catch };
     info.push({ k: 'inspect', ...sc.inspection });
   }
   if (ev === 'weather' || ev === 'protest') { sc.fewer = C.fewer; info.push({ k: 'event', ev, n: C.fewer }); }
