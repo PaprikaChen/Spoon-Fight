@@ -10,7 +10,7 @@ const CFG = {
   // Tables are fixed by location (2 per section). Staff: one bunny per section; wages are paid every day before opening.
   // Bunnies stay from day to day. Letting one go costs severance (team rule, Nov 19): fire × daily wage for each bunny,
   //   the same for every bunny. Wages are TBD.
-  staff: { wage: { country: 6, city: 10 }, fire: 1.5, perSection: 2 },
+  staff: { wage: { country: 14, city: 18 }, fire: 1.5, perSection: 2 },
   baseDemand: 14,
   // Ad cards start on this day (days before it have no Ads step). From then on Ads is the first step of the day,
   // and the cards stay face down (only the counts are public) until just before service.
