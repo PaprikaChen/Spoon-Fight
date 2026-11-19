@@ -485,6 +485,9 @@ const restName = loc => (loc === 'city' ? 'City' : 'Countryside');
 
 function render() {
   if (app.mode === 'local') document.body.dataset.view = app.view; else delete document.body.dataset.view;
+  // Seat colours are fixed: Player 1 is always blue, Player 2 always pink. The styles say "you" and "rival",
+  // so when the viewer is Player 2 the two colour sets swap (style.css, [data-seat="p2"]).
+  if (app.mode && app.S) document.documentElement.dataset.seat = viewer(); else delete document.documentElement.dataset.seat;
   renderBar();
   const root = $('#app');
   if (!app.mode) root.innerHTML = lobbyHTML();
@@ -686,7 +689,7 @@ function gameHTML() {
   if (app.mode === 'local' && app.cover === s && PRIVATE_PHASES.includes(S.phase)) return coverHTML(s);
   if (inRoom()) return roomHTML();
   // One-screen practice: say whose turn it is (the old "Playing as P1" bar)
-  const playing = app.mode === 'local' && S.phase !== 'over' ? `<div class="strip soft"><span class="dot round ${s === 'p1' ? 'you' : 'rival'}"></span><span><b>Playing as ${esc(nameOf(s))}</b> · switch players with the buttons at the top. Look away when it's not your turn.</span></div>` : '';
+  const playing = app.mode === 'local' && S.phase !== 'over' ? `<div class="strip soft"><span class="dot round you"></span><span><b>Playing as ${esc(nameOf(s))}</b> · switch players with the buttons at the top. Look away when it's not your turn.</span></div>` : '';
   return playing + timerPill(s) + phaseHTML(s);
 }
 function phaseHTML(s) {
