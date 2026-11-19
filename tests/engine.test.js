@@ -115,8 +115,8 @@ console.log(wins, reasons, { avgServed: (stats.served / stats.days).toFixed(2), 
   for (const s of ['p1', 'p2']) for (const h of S.players[s].history) if (Math.abs(Math.round(h.cash * 100) - h.cash * 100) > 1e-6) { console.log('cash decimals', h.cash); process.exit(1); }
   console.log('determinism + cash OK', JSON.stringify(S.result.score.p1));
 }
-// Shady deal taken twice: the second deal must keep the original start day, so the inspector still checks
-// on the day of the second deal (before the fix, taking it again skipped that day's inspection).
+// Shady deal (team rule, Nov 19): each deal is caught with its offer day's chance, once, on a night from that day to the last,
+// with that day's fine and −1 star. Every deal taken is its own gamble.
 {
   const plain = (S, s) => {
     const k = S.waiting[s];
@@ -124,37 +124,48 @@ console.log(wins, reasons, { avgServed: (stats.served / stats.days).toFixed(2), 
       case 'pick': return { k, loc: 'country' };
       case 'invest': return { k, staff: [], choice: S.events[s].type === 'shady' ? 'accept' : 'decline' };
       case 'market': return { k, buys: s === 'p1' ? [0, 2, 4] : [1, 3, 5] };
-      case 'commit': return { k, h: E.adHash({ self: [], rival: [] }, 'x'), nSelf: 0, nRival: 0 };
+      case 'commit': return { k, h: E.adHash({ self: [], rival: [] }, 'x'), nSelf: 0, nRival: 0, cost: 0, bump: 0 };
       case 'reveal': return { k, self: [], rival: [], salt: 'x' };
       case 'service': return { k, res: E.autoService(S, s) };
       case 'voucher': return { k, n: 0 };
       default: return { k };
     }
   };
-  let tested = 0;
-  for (let i = 0; i < 400 && tested < 20; i++) {
-    const seed = 'shady' + i, deck = E.simulate(seed, { p1: [], p2: [] }).decks.p1.slice(0, E.CFG.rounds);
-    const days = deck.map((t, d) => (t === 'shady' ? d + 1 : 0)).filter(Boolean);
-    if (days.length < 2) continue;
-    const [first, second] = days;
-    const logs = { p1: [], p2: [] }; let S;
+  const O = E.CFG.shady.offer, took = {}, caught = {};
+  let twice = 0;
+  for (let i = 0; i < 1500; i++) {
+    const seed = 'shady' + i, logs = { p1: [], p2: [] }; let S;
     for (let g = 0; g < 400; g++) {
       S = E.simulate(seed, logs);
-      if (S.phase === 'over' || (S.phase === 'service' && S.round === second)) break;
+      if (S.phase === 'over') break;
       const s = S.waiting.p1 ? 'p1' : S.waiting.p2 ? 'p2' : null; if (!s) break;
       logs[s].push(plain(S, s));
     }
-    if (S.phase !== 'service' || S.round !== second) continue;                   // went broke first
-    const caught = S.players.p1.history.some(h => h.ledger.some(l => l.label === 'Inspector fine'));
-    if (caught) continue;                                                         // caught before the second offer: a fresh start is correct
-    const p = S.players.p1;
-    if (p.shadyFrom !== first) { console.log('shady: start day moved', { seed, first, second, shadyFrom: p.shadyFrom }); process.exit(1); }
-    if (!S.script.p1.inspection) { console.log('shady: no inspection on the day of the second deal', { seed, first, second }); process.exit(1); }
-    if (!p.ledger.some(l => l.label === 'Shady deal' && l.amt === E.CFG.shady.cash)) { console.log('shady: second deal not paid', { seed }); process.exit(1); }
-    tested++;
+    if (S.result.reason !== 'done') continue;
+    for (const s of ['p1', 'p2']) {
+      const p = S.players[s];
+      if (p.deals.length > 1) twice++;
+      const paid = p.history.flatMap(h => h.ledger).filter(l => l.label === 'Shady deal').length;
+      if (paid !== p.deals.length) { console.log('shady: each deal must be paid', seed, s, paid, p.deals); process.exit(1); }
+      for (const d of p.deals) {
+        took[d.day] = (took[d.day] || 0) + 1;
+        if (d.fine !== O[d.day].fine) { console.log('shady: wrong fine for the offer day', d); process.exit(1); }
+        if (d.night === null) continue;
+        caught[d.day] = (caught[d.day] || 0) + 1;
+        if (d.night < d.day || d.night > E.CFG.rounds) { console.log('shady: caught on a night outside the deal', d); process.exit(1); }
+        const h = p.history[d.night - 1], fine = p.deals.filter(x => x.night === d.night).reduce((a, x) => a + x.fine, 0);
+        if (!h.ledger.some(l => l.label === 'Inspector fine' && l.amt === -fine)) { console.log('shady: no fine on the night', d, h.ledger); process.exit(1); }
+      }
+      const fines = p.history.flatMap(h => h.ledger).filter(l => l.label === 'Inspector fine').length;
+      if (fines !== new Set(p.deals.filter(d => d.night !== null).map(d => d.night)).size) { console.log('shady: fine on a night nobody was caught', seed, s, p.deals); process.exit(1); }
+    }
   }
-  if (!tested) { console.log('shady: found no game with two shady deals to test'); process.exit(1); }
-  console.log(`shady deal taken twice OK (${tested} games)`);
+  for (const d of Object.keys(O)) {
+    const rate = (caught[d] || 0) / (took[d] || 1);
+    if (!took[d] || Math.abs(rate - O[d].catch) > 0.08) { console.log('shady: caught rate off for day', d, rate, took[d]); process.exit(1); }
+  }
+  if (!twice) { console.log('shady: found no game with two deals'); process.exit(1); }
+  console.log('shady deal OK', Object.keys(O).map(d => `day ${d}: ${Math.round((caught[d] || 0) / took[d] * 100)}% of ${took[d]}`).join(', '));
 }
 
 // Playtest Nov 15 rules: rush = half the meal price, stars pay out every day, the market is a grid of 24 bundles

@@ -70,7 +70,12 @@ const CFG = {
   // goes on with the player's current choices. Page-only (the engine never reads the clock). TBD.
   stageSeconds: 180,
   // Each star is worth starValue: paid into your cash at the end of every day, and counted again in the final score
-  starValue: 20, shady: { cash: 50, fine: 20, catch: 0.2 }
+  starValue: 20,
+  // Shady deal (team rule, Nov 19): take `cash` now. Each offer day has its own terms: `catch` = chance the inspector
+  //   catches that deal before the game ends, `fine` = what it costs then (plus 1 star). Later offers are riskier.
+  //   Rolled once when you take it; if caught, the night it happens is picked from that night to the last day.
+  //   Every deal you take is its own gamble.
+  shady: { cash: 50, offer: { 1: { catch: 0.30, fine: 20 }, 2: { catch: 0.35, fine: 30 }, 3: { catch: 0.40, fine: 40 }, 4: { catch: 0.50, fine: 50 }, 5: { catch: 0.60, fine: 60 } } }
 };
 CFG.market.stock = CFG.market.bundles.reg.length + CFG.market.bundles.exp.length;
 const round2 = x => Math.round(x * 100) / 100;
@@ -136,7 +141,7 @@ function staffCost(p, n, cash = p.cash) { return round2(n * wageOf(p) + severanc
 
 function newPlayer() {
   return { loc: null, cash: CFG.startCash, stars: CFG.startStars, regulars: CFG.regulars.start, tables: 0, staff: [], ingr: 0, pending: 0, wom: 0,
-    loan: false, shadyFrom: null, bankrupt: false, ledger: [], history: [] };
+    loan: false, deals: [], bankrupt: false, ledger: [], history: [] };
 }
 function money(p, label, amt) { p.cash = round2(p.cash + amt); p.ledger.push({ label, amt: round2(amt) }); }
 function note(p, label) { p.ledger.push({ label, amt: null }); }
@@ -226,10 +231,11 @@ function prepService(S, s) {
     ev = pool[Math.floor(r() * pool.length)];
   }
   sc.event = ev;
-  if (p.shadyFrom !== null && S.round > p.shadyFrom) {
-    // Every day after taking the deal: a `shady.catch` chance the inspector catches you
-    const roll = rand(S.seed, `shady${s}${S.round}`)();
-    sc.inspection = { roll, caught: roll < CFG.shady.catch };
+  // Shady deals still open tonight: the inspector comes by; deals rolled to be caught tonight are caught
+  const open = p.deals.filter(d => d.day <= S.round && (d.night === null || d.night >= S.round));
+  if (open.length) {
+    const got = open.filter(d => d.night === S.round);
+    sc.inspection = { caught: got.length, fine: got.reduce((a, d) => a + d.fine, 0) };
     info.push({ k: 'inspect', ...sc.inspection });
   }
   if (ev === 'weather' || ev === 'protest') { sc.fewer = C.fewer; info.push({ k: 'event', ev, n: C.fewer }); }
@@ -298,7 +304,7 @@ function finishService(S, s, res) {
   if (rushN) money(p, `Rush plates ×${rushN}`, -cost);
   if (served + delivered) money(p, `Sales (${served + delivered} guests)`, sales);
   if (tip) money(p, 'Proposal tip', tip);
-  if (sc.inspection && sc.inspection.caught) money(p, 'Inspector fine', -CFG.shady.fine);
+  if (sc.inspection && sc.inspection.caught) money(p, 'Inspector fine', -sc.inspection.fine);
   if (sc.mid === 'fight') note(p, `${Math.min(C.fightStaff, sc.staff.length)} bunnies hurt in a fight (back tomorrow)`);
   if (S.reveals[s].self.includes('wom')) p.wom += CFG.ads.wom.n;
   p.ingr = Math.max(0, plates - served - delivered);
@@ -324,7 +330,7 @@ function review(S) {
     const why = [];
     if (v.turned === 0) why.push('served everyone +1');
     else if (unv > 0) why.push(`turned away ${unv} ${unv <= 3 ? '−1' : '−2'}`);
-    if (v.inspection && v.inspection.caught) { delta -= 1; why.push('inspector −1'); p.shadyFrom = null; }
+    if (v.inspection) for (let i = 0; i < v.inspection.caught; i++) { delta -= 1; why.push('inspector −1'); }
     if (v.food === 'give' && sc.rolls.food < C.foodGood) { delta += 1; why.push('kindness paid off +1'); }
     if (v.food === 'refuse' && sc.rolls.food < C.foodBad) { delta -= 1; why.push('word got out you said no −1'); }
     if (sc.blogger && v.turned === 0 && sc.rolls.blogger < CFG.ads.blogger.star) { delta += 1; why.push('blogger loved it +1'); }
@@ -422,8 +428,13 @@ function apply(S, got) {
         const p = S.players[s], a = got[s], e = S.events[s];
         if (e.type === 'shady') {
           e.choice = a.choice === 'accept' ? 'accept' : 'decline';
-          // A second deal while one is still active keeps the original start day, so it can't skip a day's inspection
-          if (e.choice === 'accept') { money(p, 'Shady deal', CFG.shady.cash); if (p.shadyFrom === null) p.shadyFrom = r; }
+          // Each deal is rolled once, now: caught or not, and if caught, which night (tonight to the last day)
+          if (e.choice === 'accept') {
+            const o = CFG.shady.offer[r], R = rand(S.seed, `shady${s}${r}`);
+            const night = R() < o.catch ? r + Math.floor(R() * (CFG.rounds - r + 1)) : null;
+            money(p, 'Shady deal', CFG.shady.cash);
+            p.deals.push({ day: r, fine: o.fine, night });
+          }
         }
         if (a.loan && CFG.loan.enabled && !p.loan) { p.loan = true; money(p, 'Loan', CFG.loan.amount); }
         // Staff: a list of section numbers. New hires are dropped if there isn't enough cash for their wages.
