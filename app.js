@@ -1114,14 +1114,20 @@ function morningHTML(s) {
   if (m.arrived) list.push(ev('good', '📦', `${plural(m.arrived, 'plate')} arrived`, "Your Regular order from yesterday is in the kitchen."));
   if (fight) list.push(ev('good', '🐰', 'Your hurt bunnies are back', 'They are ready to work again today.'));
   if (!list.length) list.push(ev('info', '🌙', 'A quiet night', 'Nothing happened overnight.'));
+  // Yesterday's stars change today's regulars (CFG.regulars): one line, most important first
   const rg = m.regulars;
   if (rg) {
-    const stars = plural(rg.stars, 'star'), now = `${rg.to} regulars come every day now.`;
-    if (rg.to > rg.from) list.unshift(ev('good', '⭐', `${sgn(rg.to - rg.from)} regulars`, `Your ${stars} got people talking. ${now}`));
-    else if (rg.to < rg.from) list.unshift(ev('bad', '📉', `${sgn(rg.to - rg.from)} regulars`, `With ${stars}, fewer people want to eat here. ${now}`));
-    else if (rg.change > 0) list.unshift(ev('good', '⭐', 'Fully booked', `Your ${stars} keep the room full: ${rg.to} regulars, as many as your restaurant can get.`));
-    else if (rg.change < 0) list.unshift(ev('bad', '📉', 'Hardly anyone left', `With ${stars}, only your ${rg.to} most loyal regulars still come.`));
-    else list.unshift(ev('info', '⭐', `${rg.to} regulars`, `Your ${stars} keep your regulars coming, the same as yesterday.`));
+    const d = rg.to - rg.from, n = rg.to, where = p.loc === 'city' ? 'a City' : 'a Countryside';
+    const line = {
+      5: [`${sgn(d)} regulars · Talk of the town!`, `Everyone's posting about your 5-star food. ${n} regulars will drop by every day now.`],
+      4: [`${sgn(d)} regulars · Word is getting around`, `Your 4 stars have people telling their friends. ${n} regulars will drop by every day now.`],
+      3: [`${n} regulars, same as yesterday`, `3 stars: good, but nobody's raving yet. Hit 4 stars and more people will come.`],
+      2: [`${sgn(d)} regulars · Some guests went elsewhere`, `A few people read your 2-star reviews and tried somewhere else. Only ${n} regulars a day now.`],
+      1: [`${sgn(d)} regulars · Ouch, that 1 star hurts`, `A 1-star rating scares people off. Only ${n} regulars a day now. Serve everyone tonight to win a star back.`]
+    }[rg.stars];
+    if (d === 0 && rg.change > 0) list.unshift(ev('good', '🎉', `${n} regulars · Packed house!`, `Your ${plural(rg.stars, 'star')} keep every seat in demand. That's as busy as ${where} restaurant gets.`));
+    else if (d === 0 && rg.change < 0) list.unshift(ev('bad', '🥲', `${n} regulars · Just the loyal few`, `Only your ${n} most loyal regulars still come. Serve everyone tonight to win a star back.`));
+    else if (line) list.unshift(ev(d > 0 ? 'good' : d < 0 ? 'bad' : 'info', d > 0 ? '⭐' : d < 0 ? '📉' : '🙂', line[0], line[1]));
   }
   if (S.round === CFG.rounds - 1) list.push(ev('info', '⚡', 'Tomorrow is the last day', 'The Market will only sell Express food.'));
   if (S.round === CFG.rounds) list.push(ev('info', '🏁', 'Last day!', 'Tonight decides who wins the Golden Spoon.'));
