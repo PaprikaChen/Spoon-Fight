@@ -36,7 +36,7 @@ const CFG = {
   shop: { loc: 1, general: 2, rival: 3 },
   ads: {
     delivery: { side: 'self', loc: 'city', name: 'Delivery app spotlight', price: 8, n: 2, desc: '+2 delivery orders: they use food but no table' },
-    lunch:    { side: 'self', loc: 'city', name: 'Office lunch deal', price: 5, n: 3, off: 4, desc: '3 guests for sure, each pays $4 less' },
+    lunch:    { side: 'self', loc: 'city', name: 'Office lunch deal', price: 5, n: 4, off: 4, desc: '4 guests for sure, each pays $4 less' },
     subway:   { side: 'self', loc: 'city', name: 'Subway poster', price: 13, n: 4, low: 2, lowChance: 0.3, desc: '+4 guests (30% chance it gets lost in the crowd: only 2)' },
     stall:    { side: 'self', loc: 'country', name: "Farmers' market stall", price: 7, n: 1, food: 1, desc: '+1 guest and 1 free food' },
     bus:      { side: 'self', loc: 'country', name: 'Tour bus stop', price: 10, n: 6, chance: 0.5, desc: '50%: a bus of 6 guests. Otherwise nobody' },
@@ -48,7 +48,7 @@ const CFG = {
     //   Swamp shows the same kind of rise, so the rival can't tell which hidden card it is.
     fake:     { side: 'rival', name: 'False advertisement', price: 4, looks: [2, 5], desc: 'Does nothing. Makes them over-prepare: they expect 2–5 more guests' },
     review:   { side: 'rival', name: 'Bad review', price: 8, n: 2, desc: 'They get 2 fewer guests' },
-    poach:    { side: 'rival', name: 'Poach a guest', price: 9, n: 1, desc: '1 of their guests comes to you instead' },
+    poach:    { side: 'rival', name: 'Poach a guest', price: 9, n: 2, desc: '2 of their guests come to you instead' },
     swamp:    { side: 'rival', name: 'Swamp them', price: 8, n: 3, looks: [2, 5], desc: '+3 guests for them. Can they seat them all?' },
     corner:   { side: 'rival', name: 'Corner the rush supplier', price: 7, extra: 3, desc: 'Their rush food costs $3 more each today' }
   },

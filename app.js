@@ -1139,7 +1139,7 @@ function morningHTML(s) {
 // Right before the doors open: what the opponent's ads do to you tonight
 const RECEIVED = {
   review: (A) => [`−${A.n} guests`, `A bad review keeps ${A.n} of your guests away tonight.`],
-  poach: (A, o) => [`−${A.n} guest`, `${plural(A.n, 'guest')} goes to ${o} instead of you.`],
+  poach: (A, o) => [`−${plural(A.n, 'guest')}`, `${plural(A.n, 'guest')} ${A.n === 1 ? 'goes' : 'go'} to ${o} instead of you.`],
   swamp: (A) => [`+${A.n} guests`, `${A.n} extra guests come to you tonight. Can you serve them all?`],
   corner: (A) => [`+$${A.extra} rush`, `Each plate you rush tonight costs $${A.extra} more.`],
   fake: (A, o, n) => ['Fake ad!', `It made you expect ${n ? `about ${plural(n, 'more guest')}` : 'more guests'}, but nobody is coming. Did ${o} make you buy too much food?`]
@@ -1227,7 +1227,7 @@ function flipStamp(x, s) {
     case 'stall': return [`+${x.n} 👤 +${x.food} 🍽`, 'A guest, plus a free plate in your kitchen.', ''];
     case 'delivery': return [`+${x.n} ORDERS`, 'Couriers come to the kitchen. They need food, but no table.', ''];
     case 'review': return [`OUCH −${A.n}`, `${o} left you a bad review.`, 'bad'];
-    case 'poach': return [`−${A.n} 👤`, `${o} took one of your guests.`, 'bad'];
+    case 'poach': return [`−${A.n} 👤`, `${o} took ${A.n === 1 ? 'one of your guests' : `${A.n} of your guests`}.`, 'bad'];
     case 'swamp': return [`+${A.n} 👤`, `${o} sent you ${A.n} extra guests. Can you serve them?`, 'bad'];
     case 'corner': return [`+$${A.extra} 🍽`, 'Your rush plates cost more tonight.', 'bad'];
     case 'fake': { const n = looksFor(s, x.id); return ['FAKE AD!', `${n ? `The ${plural(n, 'guest')} you expected` : 'The guests you expected'} won't come. ${o} bluffed.`, 'bad']; }
