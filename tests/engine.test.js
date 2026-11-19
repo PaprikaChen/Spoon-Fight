@@ -86,13 +86,14 @@ console.log(wins, reasons, { avgServed: (stats.served / stats.days).toFixed(2), 
   const S2 = E.simulate('fire', H), led = S2.players.p1.ledger;
   const pre = E.simulate('fire', { p1: H.p1.slice(0, -1), p2: H.p2.slice(0, -1) }).players.p1;
   if (!led.some(l => l.label === 'Severance ×1' && l.amt === -E.severance(pre, 1)) || !led.some(l => l.label === 'Wages ×2')) { console.log('severance wrong', led, E.severance(pre, 1)); process.exit(1); }
-  // Goodbye pay you can't afford (2 of 3 bunnies: more than your cash) keeps the bunnies you can't pay to let go
+  // Letting 2 of 3 go: goodbye pay for both
   const H2 = { p1: H.p1.slice(0, -1).concat({ k: '2:invest', staff: [2] }), p2: H.p2 };
-  const tooMuch = E.simulate('fire', H2).players.p1;
-  if (E.severance(pre, 2) <= pre.cash || tooMuch.staff.length !== 2 || tooMuch.cash < 0) { console.log('unaffordable severance wrong', E.severance(pre, 2), pre.cash, tooMuch.staff, tooMuch.cash); process.exit(1); }
-  // The team's worked examples (playtest Nov 15): $6 pay, net worth $245
-  const team = n => ({ loc: 'country', stars: 0, cash: 245, staff: [...Array(n).keys()] });
-  const ex = [[team(7), 1, 24.5], [team(7), 2, 53.9], [team(15), 1, 10.5]];
+  const two = E.simulate('fire', H2).players.p1;
+  if (two.staff.length !== 1 || !two.ledger.some(l => l.label === 'Severance ×2' && l.amt === -E.severance(pre, 2))) { console.log('severance for two wrong', two.staff, two.ledger); process.exit(1); }
+  // Team rule (Nov 19): fire × daily wage for each bunny, whatever the cash or team size
+  const team = (n, loc = 'country', cash = 245) => ({ loc, stars: 3, cash, staff: [...Array(n).keys()] });
+  const F = E.CFG.staff.fire, Wc = E.CFG.staff.wage.country, Wy = E.CFG.staff.wage.city;
+  const ex = [[team(7), 1, F * Wc], [team(7), 2, 2 * F * Wc], [team(2, 'country', 900), 2, 2 * F * Wc], [team(4, 'city'), 1, F * Wy], [team(1), 3, F * Wc]];
   for (const [tp, k, want] of ex) if (E.severance(tp, k) !== want) { console.log('severance formula wrong', tp.staff.length, k, E.severance(tp, k), 'want', want); process.exit(1); }
   for (const s of ['p1', 'p2']) H[s].push({ k: '2:market', buys: [] }, { k: '2:service', res: {} }, { k: '2:voucher', n: 0 }, { k: '2:next' }, { k: '3:morning' });
   const S3 = E.simulate('fire', H);

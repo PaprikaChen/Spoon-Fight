@@ -621,7 +621,7 @@ function howtoHTML() {
         <tr><td>Tables</td><td>${L.country.tables}</td><td>${L.city.tables}</td></tr><tr><td>Each bunny costs a day</td><td>$${C.staff.wage.country}</td><td>$${C.staff.wage.city}</td></tr><tr><td>Each guest pays</td><td><b>$${L.country.price}</b></td><td><b>$${L.city.price}</b></td></tr></tbody></table>
         <p><b>Watch your rent.</b> It's paid every morning. If you can't pay it, you're out of the game.</p>`)}
       ${sec('day', 'A day, step by step', 'What you do in each of the 5 steps', `<ol class="steps">
-        <li><b>Staff</b><br>Hire bunnies. Each one seats and serves the ${C.staff.perSection} tables in its own section. Wages are paid every morning before you open, and bunnies stay until you let them go. Letting one go costs goodbye pay: more when your restaurant is worth more, and more for each bunny you let go, because the rest have to work harder.</li>
+        <li><b>Staff</b><br>Hire bunnies. Each one seats and serves the ${C.staff.perSection} tables in its own section. Wages are paid every morning before you open, and bunnies stay until you let them go. Letting one go costs goodbye pay: ${C.staff.fire} days of their wage ($${round2(C.staff.fire * C.staff.wage.country)} in the Countryside, $${round2(C.staff.fire * C.staff.wage.city)} in the City).</li>
         <li><b>Market</b><br>You both shop at once for ${C.market.time} seconds, racing for the same ${C.market.stock} food bundles. Each bundle makes 1 to ${Math.max(...C.market.bundles.reg, ...C.market.bundles.exp)} plates. Whoever clicks first gets it. <b>Express</b> ($${C.market.exp.price} a plate) arrives today. <b>Regular</b> ($${C.market.reg.price} a plate) is cheaper, but might not arrive until tomorrow. On the last day there's only Express.</li>
         <li><b>Ads</b> (from day ${C.adsFrom}, first thing in the morning)<br>Buy ads that bring you guests, or that cause trouble for your rival. You see what your own ads do right away; you only learn what your rival's ads do to you right before the doors open. Ads are paid then too.</li>
         <li><b>Service</b><br>Guests walk in for ${Math.round(C.service.live.dayLen / 60)} minutes. Your bunnies look after their own tables. You are the chef: click a guest at the door to seat them, click a seated guest to bring a plate. Out of plates? Click the stove to rush one: it costs half of what the guest pays ($${rushBase({ loc: 'country' })} in the Countryside, $${rushBase({ loc: 'city' })} in the City), so you earn less, but you keep your stars. Guests wait about ${C.service.live.qPat} seconds before they leave unhappy.</li>
@@ -852,8 +852,7 @@ function buildHTML(s) {
   const reserved = adReserve(s), mine = myCards(s);
   const cash = p.cash - reserved + (f.choice === 'accept' ? CFG.shady.cash : 0) + (loanOn && f.loan ? CFG.loan.amount : 0);
   const n = f.staff.length, fired = Math.max(0, p.staff.length - p.staff.filter(i => f.staff.includes(i)).length - f.staff.filter(i => !p.staff.includes(i)).length);
-  // Goodbye pay follows the team's rule (CFG.staff.fire): bigger when the restaurant is worth more, and for each bunny fewer.
-  // It's worked out from the cash at this moment, the same as the engine does.
+  // Goodbye pay follows the team's rule (CFG.staff.fire): the same number of days' wage for each bunny.
   const cashNow = cash + reserved, sev = severance(p, fired, cashNow), wages = n * w, after = round2(cash - wages - sev);
   const keptOld = p.staff.filter(i => f.staff.includes(i)).length, nextSev = !day1 && keptOld > 0 ? round2(severance(p, fired + 1, cashNow) - sev) : 0;
   const E = guestGuess(s), guess = Math.max(0, Math.round(E.total)), sug = Math.min(nSec, Math.ceil(guess / CFG.service.perBunny));
@@ -864,7 +863,7 @@ function buildHTML(s) {
   const change = needChoice ? `<span class="hnote">${f.choice === 'accept' ? `You took the $${CFG.shady.cash}.` : 'You said no to the deal.'}</span>` : '';
   const card = `<b class="htitle">Hire staff</b>
     ${reserved ? hrow('Ads (paid before dinner)', usd(-reserved)) : ''}${hrow(`$${w} per bunny a day`, n ? usd(-wages) : '$0')}${fired ? hrow(`Goodbye pay ×${fired}`, usd(-sev), 'neg') : ''}
-    ${nextSev ? `<span class="hnote" title="Goodbye pay is bigger when your restaurant is worth more, and grows with each bunny you let go: the rest have to work harder.">${fired ? 'One more goodbye' : 'Letting a bunny go'}: <b>${fired ? '+' : ''}${usd(nextSev)}</b></span>` : ''}
+    ${nextSev ? `<span class="hnote" title="Goodbye pay is ${CFG.staff.fire} days of wage for each bunny you let go.">${fired ? 'One more goodbye' : 'Letting a bunny go'}: <b>${fired ? '+' : ''}${usd(nextSev)}</b></span>` : ''}
     ${hrow('Expect about', plural(guess, 'guest'))}${hrow('Suggested without your help', plural(sug, 'bunny', 'bunnies'))}${hrow('Left after staff costs', usd(after), 'you')}${warn}${change}${loan}
     <button class="cta" data-act="invest">${day1 ? 'Open for service →' : 'Go shopping →'}</button>`;
   return `<section class="hire2">${head(day1 ? 'Time to hire staff' : 'Hire staff', sub)}${hireStage(s, f.staff, card, day1 && f.tip < 3 ? hireTip(s, f.tip) : '')}</section>`;

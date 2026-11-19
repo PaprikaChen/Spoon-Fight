@@ -8,11 +8,9 @@ const CFG = {
     city:    { name: 'City', tag: '$$$', open: 35, rent: 12, tables: 16, price: 12 }
   },
   // Tables are fixed by location (2 per section). Staff: one bunny per section; wages are paid every day before opening.
-  // Bunnies stay from day to day. Letting one go costs severance (team rule, playtest Nov 15):
-  //   fire.pay × daily wage × (1 / bunnies left after this one goes) × (fire.worth × net worth)
-  //   so a richer restaurant pays more, and each goodbye costs more as the team gets smaller (more pressure on the rest).
-  //   Net worth = cash + stars × starValue at the moment you decide. Wages are TBD.
-  staff: { wage: { country: 6, city: 10 }, fire: { pay: 0.5, worth: 0.2 }, perSection: 2 },
+  // Bunnies stay from day to day. Letting one go costs severance (team rule, Nov 19): fire × daily wage for each bunny,
+  //   the same for every bunny. Wages are TBD.
+  staff: { wage: { country: 6, city: 10 }, fire: 1.5, perSection: 2 },
   baseDemand: 14,
   // Ad cards start on this day (days before it have no Ads step). From then on Ads is the first step of the day,
   // and the cards stay face down (only the counts are public) until just before service.
@@ -128,13 +126,10 @@ function opPrice(S, s, i) {
 }
 const wageOf = p => CFG.staff.wage[p.loc] || 0;
 const sectionsOf = p => CFG.loc[p.loc].tables / CFG.staff.perSection;
-// What letting `fired` of today's bunnies go costs, one after another (see CFG.staff.fire). `cash` = cash at the moment you decide.
+// What letting `fired` of today's bunnies go costs (see CFG.staff.fire). `cash` is unused (kept so callers don't change).
 const netWorth = (p, cash = p.cash) => round2(Math.max(0, cash) + p.stars * CFG.starValue);
 function severance(p, fired, cash = p.cash) {
-  const F = CFG.staff.fire, base = F.pay * wageOf(p) * F.worth * netWorth(p, cash);
-  let t = 0;
-  for (let i = 1; i <= Math.min(fired, p.staff.length); i++) t += base / Math.max(1, p.staff.length - i);
-  return round2(t);
+  return round2(Math.min(Math.max(0, fired), p.staff.length) * CFG.staff.fire * wageOf(p));
 }
 // Hire / let go: wages for everyone on staff today, plus severance for each bunny fewer than yesterday
 function staffCost(p, n, cash = p.cash) { return round2(n * wageOf(p) + severance(p, Math.max(0, p.staff.length - n), cash)); }
