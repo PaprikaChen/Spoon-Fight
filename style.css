@@ -1060,3 +1060,10 @@ body{transition:background-color .35s ease}
 }
 /* Staff landing page (staffIntroHTML) */
 .sintro-art{display:grid;place-items:center}.sintro-art svg{height:clamp(120px,22cqh,190px);width:auto;border-radius:18px}
+/* market, 12 bundles (Nov 19): fewer slots, so each one is bigger: 4 across, 3 rows, sized to the window height */
+.shelf{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.item{min-height:clamp(84px,12.5cqh,130px);padding:clamp(10px,1.6cqh,16px) 16px;gap:clamp(6px,1.2cqh,12px);border-radius:16px}
+.item .tbox.sm{width:clamp(26px,4cqh,36px);height:clamp(26px,4cqh,36px)}
+.item .pn{font-size:clamp(24px,4.4cqh,38px)} .item .pn small{font-size:clamp(11px,1.6cqh,14px)}
+.item .p,.item .s{font-size:clamp(12px,1.8cqh,15px)} .item .off{font-size:clamp(11px,1.6cqh,13px);padding:3px 8px}
+@media (max-width:700px){.shelf{grid-template-columns:repeat(3,minmax(0,1fr))}}
