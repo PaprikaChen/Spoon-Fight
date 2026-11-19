@@ -622,7 +622,7 @@ function howtoHTML() {
         <p><b>Watch your rent.</b> It's paid every morning. If you can't pay it, you're out of the game.</p>`)}
       ${sec('day', 'A day, step by step', 'What you do in each of the 5 steps', `<ol class="steps">
         <li><b>Staff</b><br>Hire bunnies. Each one seats and serves the ${C.staff.perSection} tables in its own section. Wages are paid every morning before you open, and bunnies stay until you let them go. Letting one go costs goodbye pay: ${C.staff.fire} days of their wage ($${round2(C.staff.fire * C.staff.wage.country)} in the Countryside, $${round2(C.staff.fire * C.staff.wage.city)} in the City).</li>
-        <li><b>Market</b><br>You both shop at once for ${C.market.time} seconds, racing for the same ${C.market.stock} food bundles. Each bundle makes 1 to ${Math.max(...C.market.bundles.reg, ...C.market.bundles.exp)} plates. Whoever clicks first gets it. <b>Express</b> ($${C.market.exp.price} a plate) arrives today. <b>Regular</b> ($${C.market.reg.price} a plate) is cheaper, but might not arrive until tomorrow. On the last day there's only Express.</li>
+        <li><b>Market</b><br>You both shop at once for ${C.market.time} seconds, racing for the same ${C.market.stock} food bundles. Each bundle makes 1 to ${Math.max(...C.market.bundles.reg, ...C.market.bundles.exp)} plates, and bigger bundles are cheaper per plate: up to about ${Math.round((C.market.discount.tiers[0][1] + C.market.discount.swing) * 100)}% off, and the deals change every day. Whoever clicks first gets it. <b>Express</b> ($${C.market.exp.price} a plate) arrives today. <b>Regular</b> ($${C.market.reg.price} a plate) is cheaper, but might not arrive until tomorrow. On the last day there's only Express.</li>
         <li><b>Ads</b> (from day ${C.adsFrom}, first thing in the morning)<br>Buy ads that bring you guests, or that cause trouble for your rival. You see what your own ads do right away; you only learn what your rival's ads do to you right before the doors open. Ads are paid then too.</li>
         <li><b>Service</b><br>Guests walk in for ${Math.round(C.service.live.dayLen / 60)} minutes. Your bunnies look after their own tables. You are the chef: click a guest at the door to seat them, click a seated guest to bring a plate. Out of plates? Click the stove to rush one: it costs half of what the guest pays ($${rushBase({ loc: 'country' })} in the Countryside, $${rushBase({ loc: 'city' })} in the City), so you earn less, but you keep your stars. Guests wait about ${C.service.live.qPat} seconds before they leave unhappy.</li>
         <li><b>Recap</b><br>See what you earned, what you spent and how your stars changed. Leftover food goes bad overnight.</li></ol>`)}
@@ -910,7 +910,7 @@ function marketBriefHTML(s) {
   return `<section class="panel lift brief" aria-labelledby="brief-title">
     <h1 id="brief-title">It's time for grocery shopping!</h1>
     <ol class="brief-rules">
-      <li>${gold(1, 'sm')}<span>You and ${esc(nameOf(o))} shop at the same time for <b>${M.time} seconds</b>. Food comes in bundles of 1 to ${Math.max(...M.bundles.reg, ...M.bundles.exp)} plates. Whoever clicks a bundle first gets it.</span></li>
+      <li>${gold(1, 'sm')}<span>You and ${esc(nameOf(o))} shop at the same time for <b>${M.time} seconds</b>. Food comes in bundles of 1 to ${Math.max(...M.bundles.reg, ...M.bundles.exp)} plates. Bigger bundles get a bigger discount, and it changes every day. Whoever clicks a bundle first gets it.</span></li>
       <li>${gold(2, 'sm')}<span>After each buy you wait a few seconds while it's delivered (${last ? `${M.exp.cd}s` : `${M.exp.cd}s for Express, ${M.reg.cd}s for Regular`}). You can't grab anything else meanwhile.</span></li>
       <li>${gold(3, 'sm')}<span>Every guest needs 1 plate, and a bundle costs its plates × the price. Food you don't use tonight goes bad overnight, so buy what you'll need.</span></li>
     </ol>
@@ -935,8 +935,9 @@ function marketHTML(s) {
   // One bundle: how many plates it makes, Express or Regular, and its price (plates × price per plate)
   const slot = (it, i) => {
     const type = it.t, own = mk.owner[i], nm = type === 'exp' ? 'Express' : 'Regular', price = itemPrice(it);
-    const head = `<span class="ihead">${tbox(type)}<span class="pn">${it.n}<small>${it.n === 1 ? 'plate' : 'plates'}</small></span></span>`;
-    const label = `${nm}, ${plural(it.n, 'plate')}, $${price}`;
+    const pct = Math.round((1 - price / fullPrice(it)) * 100), off = pct > 0 ? `<span class="off">−${pct}%</span>` : '';
+    const head = `<span class="ihead">${tbox(type)}<span class="pn">${it.n}<small>${it.n === 1 ? 'plate' : 'plates'}</small></span>${off}</span>`;
+    const label = `${nm}, ${plural(it.n, 'plate')}, $${price}${pct > 0 ? `, ${pct}% off` : ''}`;
     if (own === s) {
       const body = settled(i) ? `<span class="s ${tomorrow(i) ? 'later' : ''}">Yours · ${tomorrow(i) ? 'tomorrow morning' : 'tonight'}</span>`
         : `<span style="display:grid;gap:4px;width:100%"><span class="s">Yours · on its way…</span><span class="bar" data-t0="${c.start}" data-t1="${c.until}"><i></i></span></span>`;

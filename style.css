@@ -339,6 +339,10 @@ input[type=text]{font:inherit;font-size:16px;padding:12px 14px;border-radius:12p
 .item{appearance:none;display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:12px;border-radius:14px;border:0;background:var(--surface);box-shadow:0 0 0 1px var(--line);
   min-height:84px;cursor:pointer;color:var(--ink);text-align:left;transition:transform .1s ease,box-shadow .1s ease}
 .item .ihead{display:flex;align-items:center;gap:8px;width:100%}
+.item .off{margin-left:auto;font-size:11px;font-weight:800;padding:2px 6px;border-radius:999px;background:#E7F6EC;color:#1B7A3D;white-space:nowrap}
+.item.taken .off,.item.mine .off{opacity:.55}
+:root[data-theme="dark"] .item .off{background:#1D3A27;color:#8FDBA8}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .item .off{background:#1D3A27;color:#8FDBA8}}
 .item .pn{font-family:var(--display);font-size:22px;font-weight:800;line-height:1;letter-spacing:-.02em;display:flex;align-items:baseline;gap:4px}
 .item .pn small{font-family:var(--body);font-size:11px;font-weight:600;color:var(--muted);letter-spacing:0}
 .item.taken .pn,.item.taken .pn small{color:var(--rival-text)} .item.poor .pn{color:var(--faint)}

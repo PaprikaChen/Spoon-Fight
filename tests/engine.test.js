@@ -168,26 +168,37 @@ console.log(wins, reasons, { avgServed: (stats.served / stats.days).toFixed(2), 
   console.log('shady deal OK', Object.keys(O).map(d => `day ${d}: ${Math.round((caught[d] || 0) / took[d] * 100)}% of ${took[d]}`).join(', '));
 }
 
-// Playtest Nov 15 rules: rush = half the meal price, stars pay out every day, the market is a grid of 24 bundles
+// Playtest rules: rush = half the meal price, stars pay out every day, the market is a grid of 12 discounted bundles
 {
   const C = E.CFG;
   // Rush plates: half of what the guest pays (Countryside $5, City $6), +$3 with the rival's corner card
   if (E.rushBase({ loc: 'country' }) !== 5 || E.rushBase({ loc: 'city' }) !== 6) { console.log('rush price wrong', E.rushBase({ loc: 'country' }), E.rushBase({ loc: 'city' })); process.exit(1); }
   const fake = { players: { p1: { loc: 'city' } }, script: { p1: { cornered: true } } };
   if (E.opPrice(fake, 'p1', 0) !== 6 + C.ads.corner.extra) { console.log('cornered rush price wrong', E.opPrice(fake, 'p1', 0)); process.exit(1); }
-  // Bundles: the team's sizes, 24 in all, in different spots on different days; the last day is all Express
+  // Bundles: the team's sizes (Nov 19: 12 bundles, 40 plates), in different spots on different days; the last day is all Express
   const sizes = items => items.filter(it => it.t === 'reg').map(it => it.n).sort((x, y) => y - x).join() + '|' + items.filter(it => it.t === 'exp').map(it => it.n).sort((x, y) => y - x).join();
   const d2 = E.marketItems('bund', 2), d3 = E.marketItems('bund', 3), d5 = E.marketItems('bund', C.rounds);
-  if (d2.length !== 24 || sizes(d2) !== '10,7,5,5,3,3,3,2,2,2,2,2|9,6,4,4,2,2,2,1,1,1,1,1') { console.log('bundles wrong', sizes(d2)); process.exit(1); }
+  if (d2.length !== 12 || sizes(d2) !== '8,5,4,2,2,1|7,5,3,1,1,1' || d2.reduce((a, it) => a + it.n, 0) !== 40) { console.log('bundles wrong', sizes(d2)); process.exit(1); }
   if (JSON.stringify(d2) === JSON.stringify(d3)) { console.log('bundles are in the same spots two days running'); process.exit(1); }
-  if (d5.length !== 24 || d5.some(it => it.t !== 'exp')) { console.log('last day should be all Express', d5); process.exit(1); }
+  if (d5.length !== 12 || d5.some(it => it.t !== 'exp')) { console.log('last day should be all Express', d5); process.exit(1); }
+  // Discounts: tier by size ± swing, never below 0; the same for both players (seeded); they change from day to day
+  const D = C.market.discount, tier = n => D.tiers.find(([m]) => n >= m)[1];
+  let moved = false;
+  for (let d = 1; d <= 200; d++) for (const it of E.marketItems('off' + d, 2)) {
+    if (it.off < 0 || it.off < tier(it.n) - D.swing - 1e-9 || it.off > tier(it.n) + D.swing + 1e-9) { console.log('discount out of range', it); process.exit(1); }
+    if (E.itemPrice(it) !== Math.round(E.fullPrice(it) * (1 - it.off))) { console.log('discounted price wrong', it); process.exit(1); }
+    if (Math.abs(it.off - tier(it.n)) > 0.02) moved = true;
+  }
+  if (!moved) { console.log('discounts never move'); process.exit(1); }
+  if (JSON.stringify(E.marketItems('same', 3)) !== JSON.stringify(E.marketItems('same', 3))) { console.log('discounts not seeded'); process.exit(1); }
   // Buying a bundle: plates × price per plate, and all its plates arrive together
   const L = { p1: [{ k: '0:pick', loc: 'country' }, { k: '1:invest', staff: [] }, { k: '1:service', res: {} }, { k: '1:voucher', n: 0 }, { k: '1:next' }, { k: '2:morning' }, { k: '2:invest', staff: [] }],
     p2: [{ k: '0:pick', loc: 'country' }, { k: '1:invest', staff: [] }, { k: '1:service', res: {} }, { k: '1:voucher', n: 0 }, { k: '1:next' }, { k: '2:morning' }, { k: '2:invest', staff: [] }] };
-  const before = E.simulate('bund', L), items = before.market.items, big = items.findIndex(it => it.t === 'exp' && it.n === 9);
+  const before = E.simulate('bund', L), items = before.market.items, bigN = Math.max(...C.market.bundles.exp), big = items.findIndex(it => it.t === 'exp' && it.n === bigN), cost = E.itemPrice(items[big]);
   L.p1.push({ k: '2:market', buys: [big] }); L.p2.push({ k: '2:market', buys: [] });
   const after = E.simulate('bund', L), b = after.market.bought.p1;
-  if (b.exp !== 9 || b.spent !== 9 * C.market.exp.price || after.players.p1.cash !== before.players.p1.cash - 9 * C.market.exp.price) { console.log('bundle purchase wrong', b, before.players.p1.cash, after.players.p1.cash); process.exit(1); }
+  if (!after.players.p1.ledger.some(l => l.label === `Express food ×${bigN}` && l.amt === -cost)) { console.log('food ledger should show the discounted price', after.players.p1.ledger); process.exit(1); }
+  if (cost >= bigN * C.market.exp.price || b.exp !== bigN || b.spent !== cost || after.players.p1.cash !== before.players.p1.cash - cost) { console.log('bundle purchase wrong', b, before.players.p1.cash, after.players.p1.cash); process.exit(1); }
   // Stars pay out at the end of every day: a "Stars ×n" line worth n × starValue in each day's ledger
   const logs = { p1: [], p2: [] }, priv = {}, rnd = (() => { let x = 7; return () => (x = (x * 16807) % 2147483647) / 2147483647; })();
   let S;

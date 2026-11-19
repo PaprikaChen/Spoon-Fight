@@ -21,12 +21,15 @@ const CFG = {
   //   It adds up, so a few good days in a row bring a crowd, and a few bad days empty the room.
   regulars: { start: 14, change: { 1: -4, 2: -2, 3: 0, 4: 3, 5: 5 }, min: 6, max: { country: 35, city: 25 } },
   // Live online market: a grid of food bundles, both players click at the same time and race for the same bundles.
-  //   bundles = how many plates each bundle makes (team grid, playtest Nov 15: 12 Regular + 12 Express = 24),
-  //   shuffled into new spots every day. price = per plate, so a bundle costs n × price.
+  //   bundles = how many plates each bundle makes (team, Nov 19: 6 Regular + 6 Express = 12 bundles, 40 plates in all),
+  //   shuffled into new spots every day. price = per plate, so a bundle costs n × price, less its discount.
+  //   discount (team, Nov 19): bigger bundles get a bigger discount: tiers = [[at least n plates, discount], ...], first match;
+  //   each bundle's discount moves up or down by up to `swing` every day (seeded, never below 0). Prices round to whole dollars.
   //   Express arrives today; Regular arrives today or tomorrow (revealed when its cooldown bar ends). On the last day every bundle is Express.
   //   cd = cooldown in seconds after buying a bundle; time = total seconds
   market: { time: 60,
-    bundles: { reg: [10, 7, 5, 5, 3, 3, 3, 2, 2, 2, 2, 2], exp: [9, 6, 4, 4, 2, 2, 2, 1, 1, 1, 1, 1] },
+    bundles: { reg: [8, 5, 4, 2, 2, 1], exp: [7, 5, 3, 1, 1, 1] },
+    discount: { tiers: [[8, 0.30], [5, 0.20], [3, 0.10], [1, 0]], swing: 0.10 },
     exp: { price: 6, cd: 3 }, reg: { price: 3, cd: 5, tomorrow: 0.5 } },
   // Ad shop (all TBD): each day you see 1 location card + 2 general cards for your shop, and 3 random cards for your rival's shop.
   // Every card can be bought once. All cards go face down; the other player only sees how many.
@@ -114,13 +117,17 @@ const adCost = c => [...c.self, ...c.rival].reduce((a, id) => a + CFG.ads[id].pr
 const adBump = (seed, r, s, rival) => (rival || []).reduce((a, id) => a + (CFG.ads[id].looks ? between(rand(seed, `look${r}${s}${id}`)(), CFG.ads[id].looks) : 0), 0);
 
 // ---------- market helpers (the page uses these too) ----------
-// Today's bundles in their shuffled spots: [{t: 'exp'|'reg', n: plates}]. On the last day the Regular bundles are sold as Express.
+// Today's bundles in their shuffled spots: [{t: 'exp'|'reg', n: plates, off: discount 0–1}].
+// On the last day the Regular bundles are sold as Express.
+const baseOff = n => (CFG.market.discount.tiers.find(([min]) => n >= min) || [0, 0])[1];
 function marketItems(seed, r) {
-  const B = CFG.market.bundles, last = r >= CFG.rounds;
-  const list = [...B.reg.map(n => ({ t: last ? 'exp' : 'reg', n })), ...B.exp.map(n => ({ t: 'exp', n }))];
-  return shuffle(list, rand(seed, `mk${r}`));
+  const B = CFG.market.bundles, D = CFG.market.discount, last = r >= CFG.rounds;
+  const list = shuffle([...B.reg.map(n => ({ t: last ? 'exp' : 'reg', n })), ...B.exp.map(n => ({ t: 'exp', n }))], rand(seed, `mk${r}`));
+  list.forEach((it, i) => { it.off = Math.round(Math.max(0, baseOff(it.n) + (rand(seed, `off${r}:${i}`)() * 2 - 1) * D.swing) * 100) / 100; });
+  return list;
 }
-const itemPrice = it => it.n * CFG.market[it.t].price;
+const fullPrice = it => it.n * CFG.market[it.t].price;
+const itemPrice = it => Math.round(fullPrice(it) * (1 - (it.off || 0)));
 const regTomorrow = (seed, r, i) => rand(seed, `reg${r}:${i}`)() < CFG.market.reg.tomorrow;
 
 // ---------- service prices (the page shows them before you click) ----------
@@ -462,19 +469,20 @@ function apply(S, got) {
       // Who got which item was settled live (first click wins). If both logs somehow claim one item, P1 keeps it.
       const m = S.market, M = CFG.market;
       for (const s of SEATS) {
-        const p = S.players[s], b = { exp: 0, today: 0, tomorrow: 0, spent: 0, items: [] };
+        const p = S.players[s], b = { exp: 0, today: 0, tomorrow: 0, spent: 0, expSpent: 0, regSpent: 0, items: [] };
         for (const raw of Array.isArray(got[s].buys) ? got[s].buys : []) {
           const i = intIn(raw, -1, m.items.length - 1);
           if (i < 0 || m.owner[i]) continue;
           const it = m.items[i], price = itemPrice(it);
           if (p.cash < price) continue;
           m.owner[i] = s; p.cash = round2(p.cash - price); b.spent += price; b.items.push(i);
+          if (it.t === 'exp') b.expSpent += price; else b.regSpent += price;
           if (it.t === 'exp') { b.exp += it.n; p.ingr += it.n; }
           else if (r < CFG.rounds && regTomorrow(S.seed, r, i)) { b.tomorrow += it.n; p.pending += it.n; }
           else { b.today += it.n; p.ingr += it.n; }
         }
-        if (b.exp) p.ledger.push({ label: `Express food ×${b.exp}`, amt: -b.exp * M.exp.price });
-        if (b.today + b.tomorrow) p.ledger.push({ label: `Regular food ×${b.today + b.tomorrow}${b.tomorrow ? ` (${b.tomorrow} tomorrow)` : ''}`, amt: -(b.today + b.tomorrow) * M.reg.price });
+        if (b.exp) p.ledger.push({ label: `Express food ×${b.exp}`, amt: -b.expSpent });
+        if (b.today + b.tomorrow) p.ledger.push({ label: `Regular food ×${b.today + b.tomorrow}${b.tomorrow ? ` (${b.tomorrow} tomorrow)` : ''}`, amt: -b.regSpent });
         m.bought[s] = b;
       }
       afterMarket(S); break;
@@ -543,4 +551,4 @@ function simulate(seed, logs) {
 }
 
 if (typeof module !== 'undefined') module.exports = { CFG, simulate, adHash, adCost, adBump, capacityOf, expectedDemand, expected,
-  marketItems, itemPrice, regTomorrow, opPrice, rushBase, staffCost, severance, netWorth, wageOf, sectionsOf, autoService };
+  marketItems, itemPrice, fullPrice, regTomorrow, opPrice, rushBase, staffCost, severance, netWorth, wageOf, sectionsOf, autoService };
