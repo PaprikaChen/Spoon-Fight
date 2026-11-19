@@ -41,7 +41,7 @@ const CFG = {
     bus:      { side: 'self', loc: 'country', name: 'Tour bus stop', price: 10, n: 6, chance: 0.5, desc: '50%: a bus of 6 guests. Otherwise nobody' },
     wom:      { side: 'self', loc: 'country', name: 'Village word of mouth', price: 7, n: 1, desc: '+1 guest today and +1 every day after' },
     flyer:    { side: 'self', name: 'Flyers', price: 8, n: 2, desc: '+2 guests' },
-    blogger:  { side: 'self', name: 'Food blogger visit', price: 12, n: 4, chance: 0.5, star: 0.3, desc: '50%: +4 guests. Turn nobody away that day: 30% chance of +1 star' },
+    blogger:  { side: 'self', name: 'Food blogger visit', price: 12, n: 4, chance: 0.7, star: 0.3, desc: '70%: +4 guests. Turn nobody away that day: 30% chance of +1 star' },
     coupon:   { side: 'self', name: 'Opening coupon', price: 4, n: 3, off: 3, desc: '+3 guests, each pays $3 less' },
     // looks: until the cards flip, the rival's "expect about N guests" goes up by a random amount in this range (team, playtest Nov 17).
     //   Swamp shows the same kind of rise, so the rival can't tell which hidden card it is.
