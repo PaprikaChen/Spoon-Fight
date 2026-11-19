@@ -925,69 +925,61 @@ function marketBriefHTML(s) {
 }
 function marketHTML(s) {
   if (!mktOpen()) return marketBriefHTML(s);
+  // Live market (Nov 19 layout): only what you need in a 60-second rush. The timer, the shelf, plates for tonight,
+  // cash left, and the done button. The rules and Express/Regular details live on the briefing page before it.
   const S = app.S, M = CFG.market, items = S.market.items, mk = app.mkt || { owner: {} }, o = other(s), now = Date.now();
   const left = mktTimeLeft(), cash = mktCashLeft(s), c = app.cool[s], cooling = c && now < c.until;
   const mine = ownedBy(s), theirs = ownedBy(o), done = !S.waiting[s], p = S.players[s];
   const settled = i => !(c && c.i === i && cooling);
   const tomorrow = i => items[i].t === 'reg' && S.round < CFG.rounds && regTomorrow(app.seed, S.round, i);
   const plates = list => list.reduce((a, i) => a + items[i].n, 0);
-  const tbox = (type, cls = '') => `<span class="tbox sm ${type} ${cls}">${ART.icon(type === 'exp' ? 'bolt' : 'box', 16)}</span>`;
-  // One bundle: how many plates it makes, Express or Regular, and its price (plates × price per plate)
+  const tbox = type => `<span class="tbox ${type}">${ART.icon(type === 'exp' ? 'bolt' : 'box', 18)}</span>`;
+  // One bundle: type icon, a big plate count, and the price with a sale sticker (bigger bundles, bigger discount)
   const slot = (it, i) => {
     const type = it.t, own = mk.owner[i], nm = type === 'exp' ? 'Express' : 'Regular', price = itemPrice(it);
-    const pct = Math.round((1 - price / fullPrice(it)) * 100), off = pct > 0 ? `<span class="off">−${pct}%</span>` : '';
-    const head = `<span class="ihead">${tbox(type)}<span class="pn">${it.n}<small>${it.n === 1 ? 'plate' : 'plates'}</small></span>${off}</span>`;
+    const pct = Math.round((1 - price / fullPrice(it)) * 100);
+    const n = `<span class="mn">${it.n}<small>${it.n === 1 ? 'plate' : 'plates'}</small></span>`;
     const label = `${nm}, ${plural(it.n, 'plate')}, $${price}${pct > 0 ? `, ${pct}% off` : ''}`;
     if (own === s) {
-      const body = settled(i) ? `<span class="s ${tomorrow(i) ? 'later' : ''}">Yours · ${tomorrow(i) ? 'tomorrow morning' : 'tonight'}</span>`
-        : `<span style="display:grid;gap:4px;width:100%"><span class="s">Yours · on its way…</span><span class="bar" data-t0="${c.start}" data-t1="${c.until}"><i></i></span></span>`;
-      return `<button class="item mine ${type}" data-act="grab" data-i="${i}" data-who="${s}" disabled aria-label="${label}, yours">${head}${body}</button>`;
+      const wait = !settled(i);
+      const corner = wait ? `<span class="mcd">${ring(c.start, c.until, 'sm you')}<b data-count="${c.until}">${Math.ceil((c.until - now) / 1000)}s</b></span>` : '';
+      const line = wait ? 'Yours · on its way…' : `Yours · ${tomorrow(i) ? 'tomorrow' : 'tonight'}`;
+      return `<button class="mslot mine ${type}" data-act="grab" data-i="${i}" data-who="${s}" disabled aria-label="${label}, yours"><span class="mtop">${tbox(type)}${corner}</span>${n}<span class="mbot"><span class="ml ${!wait && tomorrow(i) ? 'later' : ''}">${line}</span></span></button>`;
     }
-    if (own) return `<button class="item taken ${type}" data-act="grab" data-i="${i}" data-who="${own}" disabled aria-label="${label}, taken">${head}<span class="s">${esc(nameOf(own))} got it</span></button>`;
+    if (own) return `<button class="mslot taken ${type}" data-act="grab" data-i="${i}" data-who="${own}" disabled aria-label="${label}, taken by ${esc(nameOf(own))}"><span class="mtop">${tbox(type)}</span>${n}<span class="mbot"><span class="ml">Taken</span></span></button>`;
     let st = '';
-    if (done || left <= 0) st = 'off'; else if (cash < price) st = 'poor'; else if (cooling) st = 'wait';
-    const sub = st === 'poor' ? `<span class="s">${nm} · $${price} · you have ${usd(cash)}</span>` : `<span class="p">${nm} · $${price}</span>`;
+    if (done || left <= 0) st = 'off'; else if (cash < price) st = 'poor'; else if (cooling) st = 'mwait';
+    // The sticker grows with the discount: a 6% deal is small, a 35% deal is big
+    const sale = pct > 0 ? `<span class="sale" style="--s:${Math.min(1.1, 0.8 + pct / 100).toFixed(2)}" aria-hidden="true"><b>${pct}<small>%</small></b><i>OFF</i></span>` : '';
+    const bot = st === 'poor' ? `<span class="mp">$${price}</span><span class="ml">Not enough cash</span>` : `<span class="mp">$${price}</span>`;
     // Only 'off' is disabled: a click while waiting or short of cash explains why (claimItem's message) instead of doing nothing
-    return `<button class="item ${type} ${st}" data-act="grab" data-i="${i}" ${st === 'off' ? 'disabled' : ''} aria-label="${label}">${head}${sub}</button>`;
+    return `<button class="mslot ${type} ${st}" data-act="grab" data-i="${i}" ${st === 'off' ? 'disabled' : ''} aria-label="${label}">${sale}<span class="mtop">${tbox(type)}</span>${n}<span class="mbot">${bot}</span></button>`;
   };
   const t0 = mk.start || now, t1 = t0 + M.time * 1000;
   const cheapest = Math.min(Infinity, ...items.map((it, i) => (mk.owner[i] ? Infinity : itemPrice(it))));
-  let strip = '';
-  if (done) strip = '';
-  else if (cooling) strip = `<div class="strip" role="status">${ring(c.start, c.until, 'sm')}<span>Your ${c.type === 'exp' ? 'Express' : 'Regular'} is on its way. You can grab again in <span data-count="${c.until}">${Math.ceil((c.until - now) / 1000)}s</span>.</span></div>`;
-  else if (cash < cheapest) strip = `<div class="strip soft"><span><b>You're out of cash for food.</b> The cheapest bundle left is $${cheapest} and you have ${usd(cash)}. Click "I'm done shopping" to move on.</span></div>`;
-  else if (!mine.length) strip = `<div class="strip soft"><span>Click any item to buy it. Be quick: ${esc(nameOf(o))} is shopping too.</span></div>`;
-  else if (S.submitted[o]) strip = `<div class="strip soft"><span class="dot round rival"></span><span><b>${esc(nameOf(o))} is done.</b> Everything left on the shelf is yours until the timer ends.</span></div>`;
+  // One small status tag next to the timer: the most useful thing to know right now
+  let tag;
+  if (!done && cash < cheapest) tag = `<span class="mtag soft">Out of cash for food. Press "I'm done shopping".</span>`;
+  else if (!done && S.submitted[o]) tag = `<span class="mtag"><i></i>${esc(nameOf(o))} is done: the rest is yours</span>`;
+  else tag = `<span class="mtag"><i></i>${esc(nameOf(o))} has ${plural(plates(theirs), 'plate')}</span>`;
   const today = p.ingr + plates(mine.filter(i => settled(i) && !tomorrow(i))), later = plates(mine.filter(i => settled(i) && tomorrow(i)));
-  const onway = plates(mine.filter(i => !settled(i))), bought = mine.filter(i => !settled(i) || !tomorrow(i)).length;
-  const E = guestGuess(s), tables = p.tables, guests = Math.round(E.total), need = Math.min(guests, tables);
-  const plenty = today > Math.max(E.max, tables) + 2;
-  const advice = plenty
-    ? `<span style="font-size:13px;font-weight:600">That's plenty</span><span style="font-size:13px;color:var(--ink2);line-height:1.45">You have ${today} plates for about ${guests} guests. Unless your ads bring a crowd, the extra goes bad overnight.</span>`
-    : `<span style="font-size:13px;font-weight:600">How much do you need?</span><span style="font-size:13px;color:var(--ink2);line-height:1.45">About ${guests} guests are coming. Tables are used again when guests leave, so plan about 1 plate per guest. Buy a few more if your ads will bring extra guests.</span><span class="hint">Food you don't use tonight goes bad overnight.</span>`;
-  const legend = S.round >= CFG.rounds
-    ? `<div class="legend" style="grid-template-columns:1fr"><div>${tbox('exp')}<span><b>Last day: only Express food · $${M.exp.price} a plate</b><span>It all arrives in time for tonight.</span></span></div></div>`
-    : `<div class="legend"><div><span class="tbox exp">${ART.icon('bolt', 18)}</span><span><b>Express · $${M.exp.price} a plate</b><span>Always arrives in time for tonight</span></span></div>
-        <div><span class="tbox reg">${ART.icon('box', 18)}</span><span><b>Regular · $${M.reg.price} a plate</b><span>${S.round === CFG.rounds - 1 ? "Half the time it arrives tomorrow, the last day" : 'Half the time it arrives tomorrow morning instead'}</span></span></div></div>`;
-  return `<div class="game">
-    <section class="panel lift" aria-label="The market shelf">
-      ${titleHTML('Market', `You and ${esc(nameOf(o))} shop at the same time. Whoever clicks a bundle first gets it.${adReserve(s) ? ` $${adReserve(s)} is kept aside for your ad cards.` : ''}`,
-        `<div class="timer" role="timer">${ring(t0, t1)}<span class="t"><b data-count="${t1}">${Math.max(0, Math.ceil(left / 1000))}s</b><span>until the market closes</span></span></div>`)}
-      ${legend}${strip}
-      <div class="shelf">${items.map((it, i) => slot(it, i)).join('')}</div>
-      <p class="hint">Each bundle makes the number of plates on it, and 1 plate feeds 1 guest. After each buy you wait while it's delivered: ${M.exp.cd} seconds for Express, ${M.reg.cd} for Regular.${S.round < CFG.rounds ? ' You find out when a Regular will arrive once its delivery finishes.' : ''}</p>
+  const onway = plates(mine.filter(i => !settled(i)));
+  const E = guestGuess(s), guests = Math.max(1, Math.round(E.total)), enough = today >= guests, plenty = today > Math.max(E.max, guests) + 2;
+  const extra = [onway ? `<b>+${onway}</b> on its way` : '', later ? `<b>+${later}</b> arriving tomorrow morning` : ''].filter(Boolean).join(' · ');
+  const sub = plenty ? "That's plenty. Extra food goes bad overnight." : extra || (enough ? 'Enough for tonight.' : 'Keep shopping: 1 plate feeds 1 guest.');
+  return `<div class="mkt2">
+    <section class="panel mmain" aria-label="The market shelf">
+      <div class="mhead"><div class="timer big" role="timer">${ring(t0, t1)}<b data-count="${t1}">${Math.max(0, Math.ceil(left / 1000))}s</b><span>left</span></div>${tag}</div>
+      <div class="mshelf ${cooling ? 'cool' : ''}">${items.map((it, i) => slot(it, i)).join('')}</div>
     </section>
-    <aside class="stack">
-      <section class="panel"><div class="row" style="gap:8px"><span class="dot you"></span><h2>Dishes you can make tonight</h2></div>
-        <div class="row" style="gap:10px;align-items:baseline"><span class="big">${today}</span><span class="muted">${today === 1 ? 'dish' : 'dishes'} · 1 plate each</span></div>
-        <div class="lines">${p.ingr ? `<div><span>Already in your kitchen</span><b>${p.ingr}</b></div>` : '<div><span class="muted">Your kitchen is empty. Everything you serve tonight comes from here.</span></div>'}
-          ${bought ? `<div><span>Bought just now, arriving tonight</span><b>${today - p.ingr}</b></div>` : ''}${onway ? `<div class="muted"><span>Still on its way</span><b>${onway}</b></div>` : ''}${later ? `<div class="muted"><span>Arriving tomorrow morning</span><b>${later}</b></div>` : ''}</div>
-        <div class="tile" style="gap:4px;padding:12px 14px">${advice}</div></section>
-      <section class="panel" style="grid-template-columns:1fr auto;align-items:center"><span style="display:grid"><span class="hint">Cash left</span><span class="num" style="font-size:24px">${usd(cash)}</span></span>
-        <span class="hint" style="text-align:right">Spent ${usd(p.cash - cash)} here.<br>Leftover food goes bad tonight.</span></section>
-      <section class="panel" style="grid-template-columns:auto 1fr auto;align-items:center"><span class="dot rival"></span><span style="font-size:13px;color:var(--ink2)"><b style="color:var(--ink)">${esc(nameOf(o))}</b> has grabbed ${plural(theirs.length, 'bundle')} (${plural(plates(theirs), 'plate')})</span><span class="hint">${S.submitted[o] ? 'done' : 'still shopping'}</span></section>
+    <aside class="mside">
+      <section class="panel mneed"><span class="hint">Plates for tonight</span>
+        <span class="mbig">${today}<small>/ about ${guests} guests</small></span>
+        <span class="mbar ${enough ? 'ok' : ''}"><i style="width:${Math.min(100, Math.round(today / guests * 100))}%"></i></span>
+        <span class="msub">${sub}</span></section>
+      <section class="panel mcash"><span class="hint">Cash left</span><span class="mbig">${usd(cash)}</span>${adReserve(s) ? `<span class="hint">$${adReserve(s)} kept aside for your ads</span>` : ''}</section>
       ${done ? waitCard(o, `They can keep shopping for <span data-count="${t1}">${Math.max(0, Math.ceil(left / 1000))}s</span> more. You bought ${plural(plates(mine), 'plate')} for ${usd(p.cash - cash)}.`)
-        : `<button class="cta outline" data-act="mkdone">I'm done shopping<small>Whatever's left stays on the shelf for ${esc(nameOf(o))}</small></button>`}
+        : `<button class="cta outline mdone" data-act="mkdone">I'm done shopping</button>`}
     </aside></div>`;
 }
 

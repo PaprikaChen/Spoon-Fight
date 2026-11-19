@@ -186,7 +186,7 @@ console.log(wins, reasons, { avgServed: (stats.served / stats.days).toFixed(2), 
   let moved = false;
   for (let d = 1; d <= 200; d++) for (const it of E.marketItems('off' + d, 2)) {
     if (it.off < 0 || it.off < tier(it.n) - D.swing - 1e-9 || it.off > tier(it.n) + D.swing + 1e-9) { console.log('discount out of range', it); process.exit(1); }
-    if (E.itemPrice(it) !== Math.round(E.fullPrice(it) * (1 - it.off))) { console.log('discounted price wrong', it); process.exit(1); }
+    if (E.itemPrice(it) !== Math.ceil(Math.round(E.fullPrice(it) * (1 - it.off) * 100) / 100) || 1 - E.itemPrice(it) / E.fullPrice(it) > it.off + 1e-9) { console.log('discounted price wrong', it); process.exit(1); }
     if (Math.abs(it.off - tier(it.n)) > 0.02) moved = true;
   }
   if (!moved) { console.log('discounts never move'); process.exit(1); }

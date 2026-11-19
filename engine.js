@@ -24,7 +24,7 @@ const CFG = {
   //   bundles = how many plates each bundle makes (team, Nov 19: 6 Regular + 6 Express = 12 bundles, 40 plates in all),
   //   shuffled into new spots every day. price = per plate, so a bundle costs n × price, less its discount.
   //   discount (team, Nov 19): bigger bundles get a bigger discount: tiers = [[at least n plates, discount], ...], first match;
-  //   each bundle's discount moves up or down by up to `swing` every day (seeded, never below 0). Prices round to whole dollars.
+  //   each bundle's discount moves up or down by up to `swing` every day (seeded, never below 0). Prices round up to whole dollars.
   //   Express arrives today; Regular arrives today or tomorrow (revealed when its cooldown bar ends). On the last day every bundle is Express.
   //   cd = cooldown in seconds after buying a bundle; time = total seconds
   market: { time: 60,
@@ -127,7 +127,8 @@ function marketItems(seed, r) {
   return list;
 }
 const fullPrice = it => it.n * CFG.market[it.t].price;
-const itemPrice = it => Math.round(fullPrice(it) * (1 - (it.off || 0)));
+// Rounded up to whole dollars, so the discount you see is never more than the one rolled
+const itemPrice = it => Math.ceil(round2(fullPrice(it) * (1 - (it.off || 0))));
 const regTomorrow = (seed, r, i) => rand(seed, `reg${r}:${i}`)() < CFG.market.reg.tomorrow;
 
 // ---------- service prices (the page shows them before you click) ----------

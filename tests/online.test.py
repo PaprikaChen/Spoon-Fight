@@ -24,7 +24,7 @@ async def _step(pg, state):
         if await pg.locator('[data-act=invest]:not([disabled])').count(): await pg.locator('[data-act=invest]').click(); return
     if ph == 'market' and await pg.locator('[data-act=mkdone]').count():
         n = state.setdefault('grabs', {}).get(id(pg), 0)
-        free = pg.locator('.item:not([disabled]):not(.poor):not(.wait)')
+        free = pg.locator('.mslot:not([disabled]):not(.poor):not(.mwait)')
         if n < 3 and await free.count():
             await free.first.click(); state['grabs'][id(pg)] = n + 1; return
         await pg.locator('[data-act=mkdone]').click(); state['grabs'][id(pg)] = 0; return

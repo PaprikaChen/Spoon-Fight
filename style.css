@@ -1067,3 +1067,51 @@ body{transition:background-color .35s ease}
 .item .pn{font-size:clamp(24px,4.4cqh,38px)} .item .pn small{font-size:clamp(11px,1.6cqh,14px)}
 .item .p,.item .s{font-size:clamp(12px,1.8cqh,15px)} .item .off{font-size:clamp(11px,1.6cqh,13px);padding:3px 8px}
 @media (max-width:700px){.shelf{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* ===== Market, Nov 19 layout: timer + shelf on the left; plates, cash and done on the right ===== */
+#app>.mkt2{display:grid;grid-template-columns:minmax(0,1fr) clamp(280px,25vw,360px);gap:16px;flex:1 1 auto;min-height:0}
+.mmain{display:flex;flex-direction:column;gap:clamp(10px,1.6cqh,16px);min-height:0}
+.mhead{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.timer.big{padding:8px 20px 8px 10px;gap:12px}.timer.big .ringp{width:clamp(34px,5cqh,46px);height:clamp(34px,5cqh,46px)}
+.timer.big b{font:800 clamp(24px,4cqh,34px) var(--display);letter-spacing:-.02em;font-variant-numeric:tabular-nums}.timer.big>span:last-child{font-size:14px;font-weight:600;color:var(--hero-muted)}
+.mtag{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--rival-text);background:var(--rival-soft);padding:7px 14px;border-radius:999px}
+.mtag i{width:10px;height:10px;border-radius:50%;background:var(--rival)}
+.mtag.soft{color:var(--ink2);background:var(--sunk);box-shadow:0 0 0 1px var(--line)}
+.mshelf{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:clamp(8px,1.3cqh,12px);flex:1;min-height:0}
+.mslot{position:relative;appearance:none;border:0;text-align:left;font:inherit;color:var(--ink);cursor:pointer;display:flex;flex-direction:column;align-items:stretch;justify-content:space-between;gap:4px;
+  padding:clamp(10px,1.7cqh,16px) clamp(12px,1.8cqh,18px);border-radius:18px;background:var(--surface);box-shadow:0 0 0 1.5px var(--line);min-height:84px;
+  transition:transform .1s ease,box-shadow .1s ease,opacity .15s}
+.mslot:hover:not([disabled]):not(.mwait):not(.poor){transform:translateY(-2px);box-shadow:0 0 0 2px var(--ink),0 12px 22px -14px rgba(9,9,11,.45)}
+.mslot .mtop{display:flex;align-items:center;justify-content:space-between}
+.mslot .tbox{width:clamp(28px,4.2cqh,38px);height:clamp(28px,4.2cqh,38px)}
+.mslot .mn{font:800 clamp(30px,7cqh,64px) var(--display);letter-spacing:-.03em;line-height:1;display:flex;align-items:baseline;gap:6px}
+.mslot .mn small{font:600 clamp(11px,1.7cqh,15px) var(--body);color:var(--muted);letter-spacing:0}
+.mslot .mbot{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.mslot .mp{font:800 clamp(17px,2.8cqh,24px) var(--display)} .mslot .ml{font-weight:700;font-size:clamp(12px,1.8cqh,16px)}
+.mslot.mine{box-shadow:0 0 0 3px var(--you);cursor:default} .mslot.mine .ml{color:var(--you-text)} .mslot.mine .ml.later{color:var(--muted)}
+.mslot.taken{background:var(--rival-soft);box-shadow:none;cursor:default;color:var(--rival-text)} .mslot.taken .mn small{color:var(--rival-text)}
+.mslot.taken .tbox{background:var(--rival-line);color:var(--rival-text);box-shadow:none}
+.mslot.poor{background:var(--sunk);box-shadow:0 0 0 1px var(--line2);cursor:default}.mslot.poor .mn,.mslot.poor .mp{color:var(--faint)}.mslot.poor .ml{color:var(--muted2);font-weight:600}
+.mslot.off{opacity:.45;cursor:default}
+.mshelf.cool .mslot:not(.mine):not(.taken){opacity:.4}
+.mslot .mcd{display:flex;align-items:center;gap:6px;font-weight:800;color:var(--you-text)}
+.ringp.you{background:conic-gradient(var(--you) calc(var(--p)*1turn),var(--you-soft) 0)}
+/* the sale sticker: a round red price-tag burst, inside the top right corner: "27% OFF" */
+.mslot .sale{position:absolute;top:clamp(6px,1cqh,10px);right:clamp(6px,1cqh,10px);width:calc(clamp(74px,12.5cqh,116px) * var(--s,1));aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;transform:rotate(-10deg);z-index:2;
+  background:radial-gradient(circle at 35% 30%,#FF5A47,var(--red1) 55%,var(--red2));filter:drop-shadow(0 4px 6px rgba(138,22,16,.35));
+  clip-path:polygon(50.0% 0.0%,56.7% 7.5%,65.5% 2.4%,69.5% 11.7%,79.4% 9.5%,80.4% 19.6%,90.5% 20.6%,88.3% 30.5%,97.6% 34.5%,92.5% 43.3%,100.0% 50.0%,92.5% 56.7%,97.6% 65.5%,88.3% 69.5%,90.5% 79.4%,80.4% 80.4%,79.4% 90.5%,69.5% 88.3%,65.5% 97.6%,56.7% 92.5%,50.0% 100.0%,43.3% 92.5%,34.5% 97.6%,30.5% 88.3%,20.6% 90.5%,19.6% 80.4%,9.5% 79.4%,11.7% 69.5%,2.4% 65.5%,7.5% 56.7%,0.0% 50.0%,7.5% 43.3%,2.4% 34.5%,11.7% 30.5%,9.5% 20.6%,19.6% 19.6%,20.6% 9.5%,30.5% 11.7%,34.5% 2.4%,43.3% 7.5%)}
+.mslot .sale b{font:400 calc(clamp(24px,4.4cqh,40px) * var(--s,1)) var(--fun);line-height:.9;color:#FFF27A;letter-spacing:.3px;text-shadow:0 2px 0 var(--red3);display:flex;align-items:flex-start}
+.mslot .sale b small{font-size:.6em;margin-top:.05em}
+.mslot .sale i{font:800 calc(clamp(10px,1.7cqh,15px) * var(--s,1)) var(--display);font-style:normal;letter-spacing:.12em;color:#fff;margin-top:1px}
+.mslot.mwait .sale,.mslot.off .sale{filter:grayscale(.2)}
+.mside{display:flex;flex-direction:column;gap:14px;min-height:0}
+.mside .panel{gap:6px}
+.mbig{font:800 clamp(34px,6cqh,54px) var(--display);letter-spacing:-.03em;line-height:1;display:flex;align-items:baseline;gap:8px}
+.mbig small{font:600 clamp(14px,2.2cqh,19px) var(--body);color:var(--muted);letter-spacing:0}
+.mbar{display:block;height:14px;border-radius:999px;background:var(--line2);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden;margin:6px 0 2px}
+.mbar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--gold3),var(--gold2));transition:width .3s}
+.mbar.ok i{background:var(--good)}
+.msub{font-size:14px;color:var(--muted)} .msub b{color:var(--ink)}
+.mdone{margin-top:auto;padding:clamp(14px,2.4cqh,20px);font-size:18px}
+.mside>.panel:last-child{margin-top:auto}
+@media (max-width:800px){#app>.mkt2{grid-template-columns:1fr}.mshelf{grid-template-columns:repeat(3,minmax(0,1fr))}}
