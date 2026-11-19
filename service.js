@@ -224,7 +224,7 @@ const courierSVG = () => person({ shirt: '#E63946', pants: '#3D405B', skin: SK[2
 
 // ---------------- the static restaurant ----------------
 function sceneParts(loc, hired, mode, animal, color) {
-  const cols = loc === 'country' ? 5 : 4;
+  const cols = Math.ceil(sectionCount(loc) / 2);
   const tables = [], sections = [];
   let g = `<defs>
     <pattern id="wood" width="140" height="40" patternUnits="userSpaceOnUse"><rect width="140" height="40" fill="#C99A6B"/><rect y="20" width="140" height="20" fill="#C1915F"/><path d="M0 20 H140 M0 40 H140" stroke="#A97B4F" stroke-width="2"/><path d="M60 0 V20 M130 20 V40 M30 20 V40" stroke="#A97B4F" stroke-width="2"/></pattern>
@@ -905,7 +905,7 @@ function floorPlan(loc, hired, animal, color) {
   const p = sceneParts(loc, new Set(hired), 'build', animal, color);
   return `<svg class="rrplan" viewBox="0 0 ${W} ${H}" role="img" aria-label="Your restaurant: click a section to hire or let go a bunny">${p.html}</svg>`;
 }
-const sectionCount = loc => (loc === 'country' ? 10 : 8);
+function sectionCount(loc) { return typeof CFG !== 'undefined' ? CFG.loc[loc].tables / CFG.staff.perSection : (loc === 'country' ? 10 : 8); }
 // Where the Build panel sits on the plan: the lower half of the kitchen (CSS for an absolutely placed box)
 const buildBox = `left:${(KX / W * 100 + 0.8).toFixed(2)}%;top:${((SY + 138) / H * 100).toFixed(2)}%;width:${((KR - KX) / W * 100 - 1.6).toFixed(2)}%;height:${((RY + RH - SY - 138) / H * 100 - 1.5).toFixed(2)}%`;
 // The kitchen above that panel: hovering it explains that you, the owner, work there

@@ -4,8 +4,8 @@ const CFG = {
   rounds: 5, startCash: 200, startStars: 3,
   // price = income per table served (fixed, tips included)
   loc: {
-    country: { name: 'Countryside', tag: '$$', open: 20, rent: 5, tables: 20, price: 10 },
-    city:    { name: 'City', tag: '$$$', open: 35, rent: 12, tables: 16, price: 12 }
+    country: { name: 'Countryside', tag: '$$', open: 20, rent: 5, tables: 16, price: 10 },
+    city:    { name: 'City', tag: '$$$', open: 35, rent: 12, tables: 12, price: 12 }
   },
   // Tables are fixed by location (2 per section). Staff: one bunny per section; wages are paid every day before opening.
   // Bunnies stay from day to day. Letting one go costs severance (team rule, Nov 19): fire × daily wage for each bunny,

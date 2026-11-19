@@ -17,7 +17,7 @@ draw += between("function ringSVG(f) {", "// ---------------- static scene -----
 static = between("function buildStatic(hired, mode) {", "const el = (parent, html, attrs = {})")
 # --- turn buildStatic into a pure function: sceneParts(loc, hired, mode, animal, color) ---
 static = static.replace("function buildStatic(hired, mode) {\n  const cols = LOC === 'country' ? 5 : 4;",
-                        "function sceneParts(loc, hired, mode, animal, color) {\n  const cols = loc === 'country' ? 5 : 4;\n  const tables = [], sections = [];")
+                        "function sceneParts(loc, hired, mode, animal, color) {\n  const cols = Math.ceil(sectionCount(loc) / 2);\n  const tables = [], sections = [];")
 static = static.replace("const CITY = LOC === 'city';", "const CITY = loc === 'city';")
 static = static.replace("  tables = []; sections = [];\n", "")
 static = static.replace("staffDraw(true, false)", "staffSVG(true, false)").replace("meDraw(false)", "chefSVG(animal, color, false)")
