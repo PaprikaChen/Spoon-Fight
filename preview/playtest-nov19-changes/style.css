@@ -1115,3 +1115,13 @@ body{transition:background-color .35s ease}
 .mdone{margin-top:auto;padding:clamp(14px,2.4cqh,20px);font-size:18px}
 .mside>.panel:last-child{margin-top:auto}
 @media (max-width:800px){#app>.mkt2{grid-template-columns:1fr}.mshelf{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* ===== Fixed seat colours: Player 1 blue, Player 2 pink. The page says "you"/"rival"; for Player 2 they swap. ===== */
+:root[data-seat="p2"]{--you:#D61F69; --you-text:#A3134F; --you-soft:#FDF2F7; --you-line:#F5C2D7;
+  --rival:#2546F0; --rival-text:#1D3BD8; --rival-soft:#EEF2FF; --rival-line:#C7D2FE}
+@media (prefers-color-scheme: dark){:root[data-seat="p2"]:not([data-theme="light"]){--you:#F0569A; --you-text:#F68DBA; --you-soft:#3A1527; --you-line:#6B2747;
+  --rival:#6B8AFF; --rival-text:#9DB0FF; --rival-soft:#1B2347; --rival-line:#34407A}}
+:root[data-seat="p2"][data-theme="dark"]{--you:#F0569A; --you-text:#F68DBA; --you-soft:#3A1527; --you-line:#6B2747;
+  --rival:#6B8AFF; --rival-text:#9DB0FF; --rival-soft:#1B2347; --rival-line:#34407A}
+:root[data-seat="p2"] .acard{--c:#F0569A;--d:#A82E66;--p:#FFE1EE}
+:root[data-seat="p2"] .acard.rival{--c:#6B8AFF;--d:#3A4FB8;--p:#E3E9FF}
