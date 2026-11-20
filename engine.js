@@ -35,7 +35,6 @@ const CFG = {
   // Every card can be bought once. All cards go face down; the other player only sees how many.
   shop: { loc: 1, general: 2, rival: 3 },
   ads: {
-    delivery: { side: 'self', loc: 'city', name: 'Delivery app spotlight', price: 8, n: 2, desc: '+2 delivery orders: they use food but no table' },
     lunch:    { side: 'self', loc: 'city', name: 'Office lunch deal', price: 5, n: 4, off: 4, desc: '4 guests for sure, each pays $4 less' },
     subway:   { side: 'self', loc: 'city', name: 'Subway poster', price: 13, n: 4, low: 2, lowChance: 0.3, desc: '+4 guests (30% chance it gets lost in the crowd: only 2)' },
     stall:    { side: 'self', loc: 'country', name: "Farmers' market stall", price: 7, n: 1, food: 1, desc: '+1 guest and 1 free food' },

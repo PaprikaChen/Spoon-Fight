@@ -303,10 +303,8 @@ function sceneParts(loc, hired, mode, animal, color) {
     for (let i = 0; i < 6; i++) k += `<path d="M${KX + 40 + i * 40} ${RY + 14} v14" stroke="#9AA3AD" stroke-width="3" stroke-linecap="round"/>`;
     k += `<g transform="translate(${KX + 56} ${SY + 140})"><rect x="-30" y="-12" width="60" height="24" rx="4" fill="#C9D1D6" stroke="${OUT}" stroke-width="1.5"/><ellipse cx="-12" cy="-2" rx="8" ry="5" fill="#9AA3AD" stroke="${OUT}" stroke-width="1"/><rect x="4" y="-7" width="18" height="10" rx="2" fill="#F4E3B0" stroke="${OUT}" stroke-width="1"/></g>`;
   }
-  k += `<g class="click" data-click="stove"><rect class="hl" x="${SXs - 8}" y="${SY - 8}" width="176" height="94" rx="14" fill="none" stroke="#FFE08A" stroke-width="3"/><rect x="${SXs}" y="${SY}" width="160" height="78" rx="10" fill="${CITY ? '#5B6670' : '#4A4E5A'}" stroke="${OUT}" stroke-width="1.8"/><rect x="${SXs + 6}" y="${SY + 64}" width="148" height="8" rx="3" fill="#3A3D47"/>`;
-  [[34, 22], [80, 22], [126, 22], [34, 48], [80, 48], [126, 48]].forEach(([dx, dy], i) => k += `<circle cx="${SXs + dx}" cy="${SY + dy}" r="11" fill="${i === 1 ? '#E76F51' : '#2F323B'}" stroke="#1E2027" stroke-width="2"/>`);
-  k += `<ellipse cx="${SXs + 80}" cy="${SY + 20}" rx="17" ry="10" fill="${CITY ? '#C9D1D6' : '#C27A4A'}" stroke="${OUT}" stroke-width="1.5"/><g transform="translate(${SXs + 160} ${SY})"><rect x="-24" y="-10" width="48" height="20" rx="10" fill="#E76F51" stroke="${OUT}" stroke-width="1.2"/><text y="4" text-anchor="middle" font-size="10" font-weight="800" fill="#FFF7EC" font-family="Nunito,sans-serif">RUSH</text></g></g>`;
-  k += `<rect x="${KX + 120}" y="${DY}" width="${KR - KX - 144}" height="128" rx="12" fill="rgba(255,247,236,.7)" stroke="#7A5A40" stroke-width="2" stroke-dasharray="7 5"/><text x="${KX + 120 + (KR - KX - 144) / 2}" y="${DY + 20}" text-anchor="middle" font-size="11" font-weight="800" letter-spacing="1.5" fill="#7A5A40" font-family="Nunito,sans-serif">DELIVERY PICKUP</text><rect x="${KX + 136}" y="${DY + 34}" width="70" height="20" rx="5" fill="#B08D6E" stroke="${OUT}" stroke-width="1.5"/>`;
+  k += `<rect x="${KR - 12}" y="${DY + 30}" width="15" height="70" rx="3" fill="#7A5A40" stroke="${OUT}" stroke-width="2"/><circle cx="${KR - 8}" cy="${DY + 66}" r="2.4" fill="#FFE08A"/>`;
+  k += `<g class="click" data-click="ride"><rect class="hl" x="${KX + 106}" y="${DY - 10}" width="${KR - KX - 122}" height="148" rx="16" fill="none" stroke="#FFE08A" stroke-width="3"/><rect x="${KX + 110}" y="${DY - 6}" width="${KR - KX - 130}" height="140" rx="14" fill="rgba(255,247,236,.55)" stroke="#7A5A40" stroke-width="2" stroke-dasharray="7 5"/></g>`;
   // Build mode: bunnies stand on their rugs, every section is clickable, the kitchen is greyed out under the budget card
   let b = '';
   if (mode === 'build') {
@@ -364,12 +362,15 @@ function create(host, opts) {
   let toastTimer = 0;
   function toast(msg) { const t = $('.rrsvc-toast'); t.textContent = msg; t.style.opacity = 1; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.style.opacity = 0; }, 2200); }
   const rushCost = () => opts.rushPrice(S.rushed);
+  // Food run (Nov 20): the parking spot where the delivery pickup was, the vehicle on it, and where the chef gets on
+  const CITY = LOC === 'city', SPOT = { x: KX + 110, y: DY - 6, w: KR - KX - 130, h: 140 }, BIKE = { x: KX + 192, y: DY + 120 }, MOUNT = { x: KX + 156, y: DY + 112 };
 
   // ---- state ----
   S = { t: 0, cash: opts.cash, earned: 0, spent: 0, tip: 0, served: 0, delivered: 0, unhappy: 0, plates: opts.plates, guests: [], couriers: [], floats: [], popups: [],
     ended: false, open: false, closed: false, nextId: 1, mTime: 0, bus: null, rushed: 0, food: null, modal: null, cards: {}, doneSent: false };
   S.staff = sections.filter(s => s.on).map(s => ({ sec: s, x: s.home.x, y: s.home.y, path: [], task: null, carry: false, node: el(L.walk, '', { 'pointer-events': 'none' }) }));
-  S.chef = { x: STOVE.x, y: STOVE.y, path: [], cur: null, queue: [], carry: false, rush: null, node: el(L.walk, '', { 'pointer-events': 'none' }) };
+  S.chef = { x: STOVE.x, y: STOVE.y, path: [], cur: null, queue: [], carry: false, rush: null, mounted: false, node: el(L.walk, '', { 'pointer-events': 'none' }) };
+  S.ride = { node: el(L.walk, '', { 'pointer-events': 'none' }), key: '' };
 
   // ---- tonight's schedule (display timing only; who comes was decided by the engine) ----
   const dl = P.dayLen, sched = [];
@@ -424,6 +425,8 @@ function create(host, opts) {
   }
   function startAction(a) {
     const ch = S.chef; ch.cur = a; a.phase = 0;
+    if (a.type !== 'rush' && ch.mounted) { ch.mounted = false; ch.x = MOUNT.x; ch.y = MOUNT.y; }
+    if (a.type === 'home') { ch.path = route(ch, STOVE); return; }
     if (a.type === 'seat') {
       const g = a.target;
       if (g.state !== 'queue' || g.claimed) return done();
@@ -433,9 +436,9 @@ function create(host, opts) {
     } else if (a.type === 'serve' || a.type === 'deliver') {
       const g = a.target;
       if (g.state !== 'wait' || g.server) return done();
-      if (S.plates <= 0) { toast('No plates left. Click the stove to rush one.'); return done(); }
+      if (S.plates <= 0) { toast(`No plates left. Click the ${CITY ? 'scooter' : 'bike'} to rush out for ingredients.`); return done(); }
       S.plates--; drawPlates(); g.server = ch; ch.path = route(ch, PICK);
-    } else if (a.type === 'rush') ch.path = route(ch, STOVE);
+    } else if (a.type === 'rush') ch.path = ch.mounted ? [] : route(ch, MOUNT);
   }
   function done() { const ch = S.chef; ch.cur = null; const n = ch.queue.shift(); if (n) startAction(n); }
   function pay(amount, x, y) { S.cash += amount; S.earned += amount; float(x, y, '+$' + amount); }
@@ -457,7 +460,58 @@ function create(host, opts) {
         else { S.plates++; drawPlates(); }
         done();
       }
-    } else if (a.type === 'rush') { if (!ch.rush) ch.rush = newRush(); ch.rush.on = true; }
+    } else if (a.type === 'rush') { ch.mounted = true; if (!ch.rush) ch.rush = newRush(); ch.rush.on = true; }
+    else if (a.type === 'home') done();
+  }
+  // ---- the food-run vehicle: a bike in the Countryside, an electric scooter in the City. (0,0) = ground under its middle ----
+  function seatedChef() {
+    // the chef without legs and arms (those are drawn for the ride: short and chunky, cartoon style)
+    const c = FUR[ANIMAL], o = { shirt: '#FFFFFF', skin: c.fur, pants: '#3D405B' }, b = body(o, 1.6);
+    return chef(ANIMAL, MC, 'A').replace(b, b.slice(b.indexOf('<path d="M-13 -9'))).replace(arms(o, 1.6), '');
+  }
+  function vehicleSVG(mounted, riding) {
+    const paw = FUR[ANIMAL].fur, limb = (d, col, w) => `<path d="${d}" fill="none" stroke="${OUT}" stroke-width="${w + 3}" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    const shadow = `<ellipse cx="2" cy="1" rx="64" ry="6" fill="rgba(40,25,10,.22)"/>`;
+    const crate = (x, y) => `<g transform="translate(${x} ${y})"><circle cx="7" cy="-15" r="6" fill="#E63946" stroke="${OUT}" stroke-width="1.3"/><path d="M16 -12 L26 -32" stroke="#52B788" stroke-width="5.5" stroke-linecap="round"/><circle cx="24" cy="-13" r="5.5" fill="#F4A261" stroke="${OUT}" stroke-width="1.3"/>
+      <rect x="-2" y="-12" width="34" height="18" rx="3" fill="#D9A066" stroke="${OUT}" stroke-width="1.8"/><path d="M-2 -5 h34 M10 -12 v18 M22 -12 v18" stroke="#A9743F" stroke-width="1.6"/></g>`;
+    let back, front, legs, arm, at;
+    if (CITY) {
+      const wheel = x => `<circle cx="${x}" cy="-15" r="15" fill="#2B2B30" stroke="${OUT}" stroke-width="2"/><circle cx="${x}" cy="-15" r="8" fill="#EDE6DA" stroke="${OUT}" stroke-width="1.4"/><circle cx="${x}" cy="-15" r="2.6" fill="#9AA3AD"/>`;
+      back = `${shadow}${crate(-66, -60)}<path d="M-70 -52 h40" stroke="${OUT}" stroke-width="3" stroke-linecap="round"/>${wheel(-42)}${wheel(46)}
+        <path d="M-68 -26 C-72 -48 -58 -62 -32 -62 L-10 -62 C-2 -62 2 -56 0 -46 L-2 -32 C-20 -30 -48 -28 -68 -26 Z" fill="#E8392B" stroke="${OUT}" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M-60 -36 C-56 -50 -44 -54 -30 -54" stroke="#FF8A7A" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <g transform="translate(-30 -40)"><circle r="9" fill="#FFF7EC" stroke="${OUT}" stroke-width="1.6"/><path d="M1.5 -6 L-4 1 H0.5 L-1.5 6 L4 -1 H-0.5 Z" fill="#F4B740" stroke="${OUT}" stroke-width="1" stroke-linejoin="round"/></g>
+        <path d="M-2 -30 h30" stroke="${OUT}" stroke-width="6" stroke-linecap="round"/><rect x="-50" y="-70" width="44" height="11" rx="5.5" fill="#5B4636" stroke="${OUT}" stroke-width="1.8"/>`;
+      front = `<path d="M26 -28 C34 -46 34 -76 42 -92 L52 -92 C48 -74 48 -50 54 -28 Z" fill="#E8392B" stroke="${OUT}" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M30 -36 C35 -54 36 -72 42 -84" stroke="#FF8A7A" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+        <path d="M30 -24 C32 -40 60 -40 64 -24" fill="#E8392B" stroke="${OUT}" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M47 -92 L50 -104" stroke="${OUT}" stroke-width="5" stroke-linecap="round"/><path d="M36 -106 h26" stroke="${OUT}" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="58" cy="-97" r="6.5" fill="#FFE08A" stroke="${OUT}" stroke-width="1.8"/>`;
+      at = 'translate(-6 -52) scale(1.42)';
+      legs = limb('M2 -60 Q14 -62 18 -56 L20 -46', '#3D405B', 10.5) + `<ellipse cx="24" cy="-42" rx="8" ry="5.5" fill="#2B2420" stroke="${OUT}" stroke-width="1.2"/>`;
+      arm = limb('M14 -88 Q28 -94 38 -102', '#FFFFFF', 8.5) + `<circle cx="40" cy="-104" r="5.8" fill="${paw}" stroke="${OUT}" stroke-width="1.4"/>`;
+    } else {
+      const FR = '#5E9E6E', bw = x => `<circle cx="${x}" cy="-19" r="19" fill="none" stroke="${OUT}" stroke-width="4.5"/><circle cx="${x}" cy="-19" r="19" fill="none" stroke="#3D405B" stroke-width="2.4"/>
+        <path d="M${x - 13} -19 h26 M${x} -32 v26 M${x - 9} -28 l18 18 M${x + 9} -28 l-18 18" stroke="#B8B2A7" stroke-width="1.2"/><circle cx="${x}" cy="-19" r="3" fill="#9AA3AD" stroke="${OUT}" stroke-width="1"/>`;
+      const frame = 'M-36 -19 L-2 -20 L-14 -56 Z M-2 -20 L30 -58';
+      back = `${shadow}${bw(-36)}${bw(40)}<path d="M-36 -42 C-30 -46 -22 -46 -18 -44" fill="none" stroke="#FFF7EC" stroke-width="5" stroke-linecap="round"/>${crate(-62, -58)}
+        <path d="${frame}" fill="none" stroke="${OUT}" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/><path d="${frame}" fill="none" stroke="${FR}" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+        <path d="M-36 -19 L-60 -50" stroke="${OUT}" stroke-width="3" stroke-linecap="round"/>
+        <path d="M-24 -60 Q-14 -66 -4 -60 Q-12 -56 -24 -60 Z" fill="#5B4636" stroke="${OUT}" stroke-width="1.6" stroke-linejoin="round"/><path d="M-14 -56 L-14 -60" stroke="${OUT}" stroke-width="3"/>
+        <circle cx="-2" cy="-20" r="6" fill="#9AA3AD" stroke="${OUT}" stroke-width="1.6"/><path d="M-2 -20 L6 -12" stroke="${OUT}" stroke-width="3" stroke-linecap="round"/><rect x="2" y="-13" width="10" height="4" rx="2" fill="#3D405B"/>`;
+      front = `<path d="M30 -58 L34 -74 M30 -58 L40 -19" fill="none" stroke="${OUT}" stroke-width="7" stroke-linecap="round"/><path d="M30 -58 L34 -74 M30 -58 L40 -19" fill="none" stroke="${FR}" stroke-width="4" stroke-linecap="round"/>
+        <path d="M24 -77 Q32 -82 40 -76" fill="none" stroke="${OUT}" stroke-width="4" stroke-linecap="round"/>
+        <g transform="translate(52 -60)"><path d="M-8 -16 L4 -30 M2 -18 L14 -28" stroke="#52B788" stroke-width="5" stroke-linecap="round"/><circle cx="-4" cy="-16" r="6" fill="#E63946" stroke="${OUT}" stroke-width="1.3"/><circle cx="8" cy="-16" r="5.5" fill="#F4A261" stroke="${OUT}" stroke-width="1.3"/>
+          <path d="M-14 -12 H18 L14 6 H-10 Z" fill="#D9A066" stroke="${OUT}" stroke-width="1.8" stroke-linejoin="round"/><path d="M-12 -5 H16 M-11 1 H15 M-4 -12 L-3 6 M6 -12 L5 6" stroke="#A9743F" stroke-width="1.4"/></g>
+        <circle cx="44" cy="-62" r="4" fill="#FFE08A" stroke="${OUT}" stroke-width="1.4"/>`;
+      at = 'translate(-14 -50) scale(1.42)';
+      legs = limb('M-8 -58 Q6 -56 8 -46 L4 -30', '#3D405B', 10.5) + `<ellipse cx="8" cy="-25" rx="8" ry="5.5" fill="#2B2420" stroke="${OUT}" stroke-width="1.2"/>`;
+      arm = limb('M6 -86 Q18 -86 28 -79', '#FFFFFF', 8.5) + `<circle cx="30" cy="-78" r="5.8" fill="${paw}" stroke="${OUT}" stroke-width="1.4"/>`;
+    }
+    if (!mounted) return back + front + `<text x="-78" y="-133" font-size="11" font-weight="900" letter-spacing="1.5" fill="#7A5A40" font-family="Nunito,sans-serif">${CITY ? 'RUSH TO MARKET' : 'RUSH TO FARM'}</text>`;
+    const speed = riding ? `<path d="M-84 -70 h-24 M-78 -52 h-32 M-86 -34 h-20" stroke="#7A5A40" stroke-width="3" stroke-linecap="round" opacity=".5"/>` : '';
+    const you = `<g transform="translate(${CITY ? -2 : -10} -178)"><rect x="-22" y="-12" width="44" height="22" rx="11" fill="${MC}" stroke="${OUT}" stroke-width="1.4"/><text y="4" text-anchor="middle" font-size="12" font-weight="900" fill="#FFFFFF" font-family="Inter,sans-serif">YOU</text></g>`;
+    return speed + back + `<g transform="${at}">${seatedChef()}</g>` + legs + front + arm + you;
   }
   function newRush() { const w = P.zone, lo = 0.04, hi = 1 - 0.04 - w, a = lo + RND() * Math.max(0, hi - lo); return { step: 0, zones: [[a, a + w]], on: false, flash: 0, ok: false }; }
   function marker() { const ph = (S.mTime * P.mSpeed) % 2; return ph < 1 ? ph : 2 - ph; }
@@ -468,9 +522,9 @@ function create(host, opts) {
     if (m >= z[0] && m <= z[1]) {
       r.step++; r.flash = .35; r.ok = true;
       if (r.step >= r.zones.length) {
-        if (ch.cur.practice) { S.plates++; drawPlates(); float(SC, SY - 14, '+1 plate (free)'); S.tut.practiced = true; ch.rush = null; ch.cur = null; return true; }
+        if (ch.cur.practice) { S.plates++; drawPlates(); float(BIKE.x, SPOT.y - 112, '+1 plate (free)'); S.tut.practiced = true; ch.rush = null; ch.cur = null; return true; }
         const cost = rushCost();
-        S.plates++; S.rushed++; S.cash -= cost; S.spent += cost; drawPlates(); float(SC, SY - 14, `+1 plate  −$${cost}`); tutAfterRush();
+        S.plates++; S.rushed++; S.cash -= cost; S.spent += cost; drawPlates(); float(BIKE.x, SPOT.y - 112, `+1 plate  −$${cost}`); tutAfterRush();
         ch.rush = null; ch.cur = null; const n = ch.queue.shift(); if (n) startAction(n);
       }
     } else { r.flash = .35; r.ok = false; }
@@ -624,8 +678,14 @@ function create(host, opts) {
       if (key !== st.key) { st.key = key; st.node.innerHTML = staffSVG(atHome, st.carry) + (stalled ? `<g transform="translate(0 -88)"><circle r="15" fill="#FFF7EC" stroke="${OUT}" stroke-width="1.5"/>${platePath(0, 1, .8)}<path d="M-10 9 L10 -9" stroke="#E63946" stroke-width="3" stroke-linecap="round"/></g>` : '') + (st.gone ? `<g transform="translate(14 -54)"><rect x="-8" y="-3" width="16" height="6" rx="2" fill="#FFFFFF" stroke="${OUT}" stroke-width="1"/><path d="M-2 0 h4 M0 -2 v4" stroke="#E63946" stroke-width="1.4"/></g>` : ''); }
       st.node.setAttribute('transform', `translate(${st.x.toFixed(1)} ${st.y.toFixed(1)})`);
     });
-    const ch = S.chef, ckey = String(ch.carry);
-    if (ckey !== ch.key) { ch.key = ckey; ch.node.innerHTML = `<g transform="scale(1.05)">${chefSVG(ANIMAL, MC, ch.carry)}</g><g transform="translate(0 -94)"><rect x="-22" y="-12" width="44" height="22" rx="11" fill="${MC}" stroke="${OUT}" stroke-width="1.4"/><text y="4" text-anchor="middle" font-size="12" font-weight="900" fill="#FFFFFF" font-family="Inter,sans-serif">YOU</text></g>`; }
+    const ch = S.chef, riding = !!(ch.cur && ch.cur.type === 'rush' && ch.rush && ch.rush.on), ckey = ch.mounted ? 'm' : String(ch.carry);
+    if (ch.mounted && ckey !== ch.key) { ch.key = ckey; ch.node.innerHTML = ''; }
+    const rkey = (ch.mounted ? 'm' : 'p') + (riding ? 'r' : '');
+    if (rkey !== S.ride.key) { S.ride.key = rkey; S.ride.node.innerHTML = vehicleSVG(ch.mounted, riding); }
+    // while the mini game runs the vehicle rocks back and forth and shakes a little; after a buy it stands still
+    const wob = riding ? { x: Math.sin(S.mTime * 6.5) * 5 + Math.sin(S.mTime * 47) * .7, y: Math.sin(S.mTime * 53) * .8, r: Math.sin(S.mTime * 29) * 1.1 } : { x: 0, y: 0, r: 0 };
+    S.ride.node.setAttribute('transform', `translate(${(BIKE.x + wob.x).toFixed(1)} ${(BIKE.y + wob.y).toFixed(1)}) rotate(${wob.r.toFixed(2)})`);
+    if (!ch.mounted && ckey !== ch.key) { ch.key = ckey; ch.node.innerHTML = `<g transform="scale(1.05)">${chefSVG(ANIMAL, MC, ch.carry)}</g><g transform="translate(0 -94)"><rect x="-22" y="-12" width="44" height="22" rx="11" fill="${MC}" stroke="${OUT}" stroke-width="1.4"/><text y="4" text-anchor="middle" font-size="12" font-weight="900" fill="#FFFFFF" font-family="Inter,sans-serif">YOU</text></g>`; }
     ch.node.setAttribute('transform', `translate(${ch.x.toFixed(1)} ${ch.y.toFixed(1)})`);
     S.couriers.forEach(c => {
       if (c.dead) return;
@@ -641,18 +701,24 @@ function create(host, opts) {
     let ui = '';
     const r = ch.rush;
     if (ch.cur && ch.cur.type === 'rush' && r && r.on) {
-      const bx = KX + 22, by = SY + 138, bw = KR - KX - 44, tx = bx + 14, tw = bw - 28, ty = by + 46, th = 20;
-      ui += `<rect x="${SXs - 6}" y="${SY - 6}" width="172" height="90" rx="13" fill="none" stroke="${MC}" stroke-width="3"/>`;
-      ui += `<rect x="${bx}" y="${by}" width="${bw}" height="92" rx="14" fill="#FFF7EC" stroke="${OUT}" stroke-width="2"/><text x="${bx + 14}" y="${by + 22}" font-size="12" font-weight="900" fill="${OUT}" font-family="Inter,sans-serif">RUSH 1 PLATE · ${ch.cur.practice ? 'FREE' : '$' + rushCost()}</text><text x="${bx + bw - 14}" y="${by + 22}" text-anchor="end" font-size="11" font-weight="800" fill="#7A5A40" font-family="Inter,sans-serif">one click</text>`;
-      ui += `<rect x="${tx}" y="${ty}" width="${tw}" height="${th}" rx="10" fill="${r.flash > 0 && !r.ok ? '#FFD6D9' : '#E9DFD3'}" stroke="${OUT}" stroke-width="1.5"/>`;
-      r.zones.forEach(([a, b]) => { ui += `<rect x="${tx + tw * a}" y="${ty + 2}" width="${tw * (b - a)}" height="${th - 4}" rx="6" fill="#52B788"/>`; });
-      const mx = tx + tw * marker();
-      ui += `<path d="M${mx - 8} ${ty - 14} h16 l-8 10 z" fill="${MC}" stroke="${OUT}" stroke-width="1.3"/><rect x="${mx - 2}" y="${ty - 3}" width="4" height="${th + 6}" rx="2" fill="${OUT}"/>`;
-      ui += `<text x="${bx + bw / 2}" y="${by + 82}" text-anchor="middle" font-size="12" font-weight="800" fill="${r.flash > 0 ? (r.ok ? '#2D6A4F' : '#B3261E') : MC}" font-family="Inter,sans-serif">${r.flash > 0 ? (r.ok ? 'Nice!' : 'Missed. Try again') : 'Click the stove (or Space) in the green'}</text>`;
-    } else if (ch.cur && ch.cur.type === 'rush') ui += `<rect x="${SXs - 6}" y="${SY - 6}" width="172" height="90" rx="13" fill="none" stroke="${MC}" stroke-width="3" stroke-dasharray="6 5"/>`;
-    if (S.cash < rushCost() && !(ch.cur && ch.cur.type === 'rush')) ui += `<rect x="${SXs}" y="${SY}" width="160" height="78" rx="10" fill="rgba(43,36,32,.55)"/><g transform="translate(${SC} ${SY + 40})"><rect x="-58" y="-12" width="116" height="24" rx="12" fill="#FFF7EC" stroke="${OUT}" stroke-width="1.4"/><text y="5" text-anchor="middle" font-size="12" font-weight="900" fill="#B3261E" font-family="Inter,sans-serif">Need $${rushCost()} to rush</text></g>`;
+      const CW = 184, CH = 82, CX = BIKE.x - 88, CY = SPOT.y - 144, RX0 = CX + 12, RW0 = CW - 24, RY0 = CY + 38;
+      const price = ch.cur.practice ? 'FREE' : '$' + rushCost(), z = r.zones[r.step], zx = RX0 + RW0 * z[0], zw = RW0 * (z[1] - z[0]), mx = RX0 + RW0 * marker();
+      const msg = r.flash > 0 ? (r.ok ? 'Nice!' : 'Missed. Try again') : 'Click or Space in the green';
+      ui += `<rect x="${CX}" y="${CY + 3}" width="${CW}" height="${CH}" rx="14" fill="rgba(58,42,30,.18)"/><rect x="${CX}" y="${CY}" width="${CW}" height="${CH}" rx="14" fill="#FFF7EC" stroke="${OUT}" stroke-width="2"/>
+        <text x="${CX + 12}" y="${CY + 22}" font-size="13" font-weight="900" fill="${OUT}" font-family="Inter,sans-serif">${CITY ? 'Stop at the market!' : 'Stop at the farm!'}</text>
+        <g transform="translate(${CX + CW - 28} ${CY + 17})"><rect x="-20" y="-10" width="40" height="20" rx="10" fill="#E76F51" stroke="${OUT}" stroke-width="1.4"/><text y="4.5" text-anchor="middle" font-size="12" font-weight="900" fill="#fff" font-family="Inter,sans-serif">${price}</text></g>
+        <rect x="${RX0}" y="${RY0}" width="${RW0}" height="22" rx="11" fill="${r.flash > 0 && !r.ok ? '#7A3B3B' : '#4A4D57'}" stroke="${OUT}" stroke-width="1.6"/>
+        <path d="M${RX0 + 10} ${RY0 + 11} H${RX0 + RW0 - 10}" stroke="#F4E3B5" stroke-width="2" stroke-dasharray="6 6"/>
+        <rect x="${zx}" y="${RY0 + 2}" width="${zw}" height="18" rx="7" fill="#52B788"/>
+        <g transform="translate(${zx + zw / 2} ${RY0 - 2})"><path d="M${-zw / 2 - 2} 0 h${zw + 4} l-3 -8 h${-zw + 2} z" fill="#F4B740" stroke="${OUT}" stroke-width="1.3"/><path d="M${-zw / 6} 0 l1 -8 M${zw / 6} 0 l-1 -8" stroke="#FFF3C4" stroke-width="3"/></g>
+        <g transform="translate(${mx} ${RY0 + 15})">${CITY
+          ? `<circle cx="-6" cy="0" r="3.4" fill="#2B2B30" stroke="#fff" stroke-width="1"/><circle cx="7" cy="0" r="3.4" fill="#2B2B30" stroke="#fff" stroke-width="1"/><path d="M-10 -2 C-10 -8 -4 -10 2 -9 L6 -9 L9 -15 L12 -15 L10 -4 Z" fill="#E8392B" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/>`
+          : `<circle cx="-7" cy="0" r="4.5" fill="none" stroke="#FFFFFF" stroke-width="2.2"/><circle cx="8" cy="0" r="4.5" fill="none" stroke="#FFFFFF" stroke-width="2.2"/><path d="M-7 0 L0 0 L-3 -8 Z M0 0 L6 -9 L8 0 M-5 -9 h4 M4 -11 h5" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`}</g>
+        <text x="${CX + CW / 2}" y="${CY + CH - 8}" text-anchor="middle" font-size="11" font-weight="800" fill="${r.flash > 0 ? (r.ok ? '#2D6A4F' : '#B3261E') : '#7A5A40'}" font-family="Inter,sans-serif">${msg}</text>`;
+    } else if (ch.cur && ch.cur.type === 'rush') ui += `<rect x="${SPOT.x - 4}" y="${SPOT.y - 4}" width="${SPOT.w + 8}" height="${SPOT.h + 8}" rx="16" fill="none" stroke="${MC}" stroke-width="3" stroke-dasharray="6 5"/>`;
+    if (S.cash < rushCost() && !(ch.cur && ch.cur.type === 'rush')) ui += `<rect x="${SPOT.x}" y="${SPOT.y}" width="${SPOT.w}" height="${SPOT.h}" rx="14" fill="rgba(43,36,32,.55)"/><g transform="translate(${SPOT.x + SPOT.w / 2} ${SPOT.y + SPOT.h / 2})"><rect x="-58" y="-12" width="116" height="24" rx="12" fill="#FFF7EC" stroke="${OUT}" stroke-width="1.4"/><text y="5" text-anchor="middle" font-size="11" font-weight="800" fill="${OUT}" font-family="Inter,sans-serif">Not enough cash</text></g>`;
     const ri = [ch.cur, ...ch.queue].findIndex(a => a && a.type === 'rush');
-    if (ri > 0) ui += `<g transform="translate(${SXs + 8} ${SY + 6})"><circle r="10" fill="${MC}" stroke="${OUT}" stroke-width="1.4"/><text y="4" text-anchor="middle" font-size="12" font-weight="900" fill="#fff" font-family="Inter,sans-serif">${ri + 1}</text></g>`;
+    if (ri > 0) ui += `<g transform="translate(${SPOT.x + 10} ${SPOT.y + 10})"><circle r="10" fill="${MC}" stroke="${OUT}" stroke-width="1.4"/><text y="4" text-anchor="middle" font-size="12" font-weight="900" fill="#fff" font-family="Inter,sans-serif">${ri + 1}</text></g>`;
     S.floats.forEach(f => { ui += `<text x="${f.x}" y="${f.y - (1.2 - f.t) * 30}" text-anchor="middle" font-size="16" font-weight="900" fill="#FFE08A" stroke="${OUT}" stroke-width="3" paint-order="stroke" opacity="${Math.min(1, f.t * 2)}" font-family="Inter,sans-serif">${escT(f.txt)}</text>`; });
     const pp = S.popups[0];
     if (pp) {
@@ -682,8 +748,8 @@ function create(host, opts) {
     { text: 'This is you, the chef.', spot: () => ({ c: [S.chef.x, S.chef.y - 50, 70] }), at: () => [S.chef.x, S.chef.y - 120] },
     { need: 'staff', text: 'Bunnies seat and serve their rug.', spot: () => { const s = sections.find(s => s.on); return s ? { r: [s.x - 6, s.y - 6, s.w + 12, s.h + 12] } : null; }, at: () => { const s = sections.find(s => s.on); return s ? [s.x + s.w / 2, s.y + s.h + 4] : [W / 2, H / 2]; }, below: true },
     { need: 'nostaff', text: 'No staff? Those tables are yours.', spot: () => { const s = sections.filter(s => !s.on).pop(); return s ? { r: [s.x - 6, s.y - 6, s.w + 12, s.h + 12] } : null; }, at: () => { const s = sections.filter(s => !s.on).pop(); return s ? [s.x + s.w / 2, s.y - 8] : [W / 2, H / 2]; } },
-    { text: 'Out of food? Make a rush dish here.', spot: () => ({ r: [SXs - 12, SY - 12, 184, 102] }), at: () => [SC, SY + 96], below: true },
-    { text: 'Try one now. This one is free!', done: 'Nice! That plate is yours.', practice: true, spot: () => ({ r: [KX + 16, SY - 12, KR - KX - 32, 250] }), at: () => [SC, SY - 20], last: true }
+    { text: `Out of plates? Rush out for fresh ingredients here.`, spot: () => ({ r: [SPOT.x - 8, SPOT.y - 8, SPOT.w + 16, SPOT.h + 16] }), at: () => [BIKE.x, SPOT.y - 14] },
+    { text: 'Try one now. This one is free!', done: 'Nice! That plate is yours.', practice: true, spot: () => ({ r: [SPOT.x - 12, SPOT.y - 158, SPOT.w + 24, SPOT.h + 166] }), at: () => [BIKE.x, SPOT.y - 166], last: true }
   ];
   const hasBus = S.busAt != null, hasCourier = S.sched.some(e => e.kind === 'courier'), hasAd = S.sched.some(e => (e.kind === 'ad' || e.kind === 'bus') && e.g.from !== 'rival');
   const TOUR3 = [
@@ -709,7 +775,7 @@ function create(host, opts) {
     if (opts.tutorial === 'day3') return tutCheck3();
     if (!T.seen.bunny) { const g = S.guests.find(g => g.state === 'led' && g.leader !== S.chef); if (g) tutHint('bunny', g.leader.x, g.leader.y - 90, 'Bunnies handle their own tables.'); }
     if (!T.seen.plates && S.plates === 0 && S.cash >= rushCost() && S.guests.some(g => g.state === 'wait' && !g.server))
-      return tutFreeze('plates', 'rush', { r: [SXs - 12, SY - 12, 184, 102] }, [SC, SY - 18], 'Out of plates! Click the stove.', false, 'stove');
+      return tutFreeze('plates', 'rush', { r: [SPOT.x - 8, SPOT.y - 8, SPOT.w + 16, SPOT.h + 16] }, [BIKE.x, SPOT.y - 14], `Out of plates! Click the ${CITY ? 'scooter' : 'bike'}.`, false, 'ride');
     if (!T.seen.door) {
       const g = S.guests.find(g => g.state === 'queue' && !g.claimed && P.qPat - g.pat >= 3);
       if (g) return tutFreeze('door', 'seat', { c: [g.x, g.y - 30, 46] }, [g.x + 10, g.y - 92], 'Bunnies are busy. Click this guest.', false, g);
@@ -816,7 +882,7 @@ function create(host, opts) {
   }
 
   // ---- start / end cards ----
-  function openDoors() { ov.hidden = true; S.tut.tour = -1; if (S.chef.cur && S.chef.cur.practice) { S.chef.cur = null; S.chef.rush = null; } S.open = true; last = performance.now(); }
+  function openDoors() { ov.hidden = true; S.tut.tour = -1; const ch = S.chef; if (ch.cur && ch.cur.practice) { ch.cur = null; ch.rush = null; } if (ch.mounted) { ch.mounted = false; ch.x = STOVE.x; ch.y = STOVE.y; ch.key = ''; } S.open = true; last = performance.now(); }
   function showStart() {
     if (opts.auto) return openDoors();
     ov.hidden = false;
@@ -852,9 +918,10 @@ function create(host, opts) {
       const inside = sp.c ? Math.hypot(q.x - sp.c[0], q.y - sp.c[1]) <= sp.c[2] : (q.x >= sp.r[0] && q.x <= sp.r[0] + sp.r[2] && q.y >= sp.r[1] && q.y <= sp.r[1] + sp.r[3]);
       if (inside) { enqueue({ type: f.wait, target: f.target }); return; }
     }
-    const n = e.target.closest('[data-click]'); if (!n) return;
+    const n = e.target.closest('[data-click]');
+    if (!n) { const ch = S.chef; if (ch.mounted && !ch.cur && !ch.queue.length) startAction({ type: 'home' }); return; }
     const c = n.getAttribute('data-click');
-    if (c === 'stove') { if (!rushTry()) enqueue({ type: 'rush', target: 'stove' }); return; }
+    if (c === 'ride') { if (!rushTry()) enqueue({ type: 'rush', target: 'ride' }); return; }
     const id = +c.slice(1);
     if (c[0] === 'g') {
       const g = S.guests.find(x => x.id === id); if (!g) return;
@@ -867,11 +934,12 @@ function create(host, opts) {
   function onKey(e) {
     if (!alive || !root.isConnected) return;
     if (e.code !== 'Space' || !(S.open || (S.chef.cur && S.chef.cur.practice)) || S.ended) return;
-    // Space is the stove during service, even if a button (a pop-up, a speed button) still has focus; only typing and open pop-ups keep it
+    // Space is the rush run during service, even if a button (a pop-up, a speed button) still has focus; only typing and open pop-ups keep it
     const a = document.activeElement, tag = a ? a.tagName : '';
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) || S.modal) return;
     if ((tag === 'BUTTON' || tag === 'SUMMARY') && !root.contains(a) && a.offsetParent !== null) return;
-    e.preventDefault(); if (tag === 'BUTTON' || tag === 'SUMMARY') a.blur(); rushTry();
+    e.preventDefault(); if (tag === 'BUTTON' || tag === 'SUMMARY') a.blur();
+    if (!rushTry() && S.chef.mounted && !S.chef.cur && S.open) enqueue({ type: 'rush', target: 'ride' });   // still on the vehicle: ride again
   }
   window.addEventListener('keydown', onKey);
   root.addEventListener('click', e => {
@@ -888,7 +956,7 @@ function create(host, opts) {
       if (S.tut.steps[S.tut.tour].practice) startPractice();
     }
   });
-  function startPractice() { S.chef.cur = { type: 'rush', target: 'stove', practice: true }; S.chef.rush = newRush(); S.chef.rush.on = true; }
+  function startPractice() { const ch = S.chef; ch.x = MOUNT.x; ch.y = MOUNT.y; ch.path = []; ch.mounted = true; ch.cur = { type: 'rush', target: 'ride', practice: true }; ch.rush = newRush(); ch.rush.on = true; }
 
   showStart();
   requestAnimationFrame(frame);
