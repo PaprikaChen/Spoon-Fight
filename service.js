@@ -513,6 +513,20 @@ function create(host, opts) {
     const you = `<g transform="translate(${CITY ? -2 : -10} -178)"><rect x="-22" y="-12" width="44" height="22" rx="11" fill="${MC}" stroke="${OUT}" stroke-width="1.4"/><text y="4" text-anchor="middle" font-size="12" font-weight="900" fill="#FFFFFF" font-family="Inter,sans-serif">YOU</text></g>`;
     return speed + back + `<g transform="${at}">${seatedChef()}</g>` + legs + front + arm + you;
   }
+  const measureCtx = document.createElement('canvas').getContext('2d');
+  // Split text into lines that fit `maxW` pixels in `font`; past `maxLines`, the last line ends with "…"
+  function wrapText(text, font, maxW, maxLines) {
+    measureCtx.font = font;
+    const fits = t => measureCtx.measureText(t).width <= maxW, words = String(text || '').split(/\s+/).filter(Boolean), lines = [];
+    let cur = '';
+    for (const w of words) {
+      const t = cur ? cur + ' ' + w : w;
+      if (fits(t) || !cur) cur = t; else { lines.push(cur); cur = w; }
+    }
+    if (cur) lines.push(cur);
+    if (lines.length > maxLines) { lines.length = maxLines; let last = lines[maxLines - 1] + '…'; while (!fits(last) && last.length > 2) last = last.slice(0, -2) + '…'; lines[maxLines - 1] = last; }
+    return lines.map(l => { if (fits(l)) return l; let t = l; while (!fits(t + '…') && t.length > 1) t = t.slice(0, -1); return t + '…'; });
+  }
   function newRush() { const w = P.zone, lo = 0.04, hi = 1 - 0.04 - w, a = lo + RND() * Math.max(0, hi - lo); return { step: 0, zones: [[a, a + w]], on: false, flash: 0, ok: false }; }
   function marker() { const ph = (S.mTime * P.mSpeed) % 2; return ph < 1 ? ph : 2 - ph; }
   function rushTry() {
@@ -722,9 +736,16 @@ function create(host, opts) {
     S.floats.forEach(f => { ui += `<text x="${f.x}" y="${f.y - (1.2 - f.t) * 30}" text-anchor="middle" font-size="16" font-weight="900" fill="#FFE08A" stroke="${OUT}" stroke-width="3" paint-order="stroke" opacity="${Math.min(1, f.t * 2)}" font-family="Inter,sans-serif">${escT(f.txt)}</text>`; });
     const pp = S.popups[0];
     if (pp) {
-      const px = 10, py = H - 76, pw = 300, ph = 64, cc = pp.side === 'rival' ? RC : MC;
-      ui += `<g opacity="${Math.min(1, pp.t / 1.5, (5 - pp.t) / 0.25).toFixed(2)}"><rect x="${px}" y="${py}" width="${pw}" height="${ph}" rx="14" fill="#FFF7EC" stroke="${OUT}" stroke-width="2"/><g transform="translate(${px + 34} ${py + 32})"><rect x="-20" y="-25" width="40" height="50" rx="7" fill="${cc}" stroke="${OUT}" stroke-width="1.6"/><rect x="-14" y="-18" width="28" height="18" rx="3" fill="#FFF7EC"/><path d="M-12 6 h24 M-12 12 h16" stroke="#FFF7EC" stroke-width="2.4" stroke-linecap="round"/></g>`;
-      ui += `<text x="${px + 66}" y="${py + 28}" font-size="15" font-weight="900" fill="${OUT}" font-family="Inter,sans-serif">${escT(pp.name)}</text><text x="${px + 66}" y="${py + 47}" font-size="12" font-weight="700" fill="${pp.bad ? '#B3261E' : '#7A5A40'}" font-family="Inter,sans-serif">${escT(pp.line)}</text></g>`;
+      // the card / event pop-up: text is measured and wrapped, and the box grows to fit (no text outside the box)
+      const pw = 316, tx = 66, tw = pw - tx - 14;
+      const nameL = wrapText(pp.name, '900 15px Inter, sans-serif', tw, 2), lineL = wrapText(pp.line, '700 12px Inter, sans-serif', tw, 3);
+      const ph = Math.max(64, 16 + nameL.length * 18 + 4 + lineL.length * 15 + 10), px = 10, py = H - 12 - ph, cc = pp.side === 'rival' ? RC : MC;
+      ui += `<g opacity="${Math.min(1, pp.t / 1.5, (5 - pp.t) / 0.25).toFixed(2)}"><rect x="${px}" y="${py}" width="${pw}" height="${ph}" rx="14" fill="#FFF7EC" stroke="${OUT}" stroke-width="2"/><g transform="translate(${px + 34} ${py + ph / 2})"><rect x="-20" y="-25" width="40" height="50" rx="7" fill="${cc}" stroke="${OUT}" stroke-width="1.6"/><rect x="-14" y="-18" width="28" height="18" rx="3" fill="#FFF7EC"/><path d="M-12 6 h24 M-12 12 h16" stroke="#FFF7EC" stroke-width="2.4" stroke-linecap="round"/></g>`;
+      let y = py + 16 + 13;
+      nameL.forEach(t => { ui += `<text x="${px + tx}" y="${y}" font-size="15" font-weight="900" fill="${OUT}" font-family="Inter,sans-serif">${escT(t)}</text>`; y += 18; });
+      y += 3;
+      lineL.forEach(t => { ui += `<text x="${px + tx}" y="${y}" font-size="12" font-weight="700" fill="${pp.bad ? '#B3261E' : '#7A5A40'}" font-family="Inter,sans-serif">${escT(t)}</text>`; y += 15; });
+      ui += `</g>`;
     }
     ui += tutRender();
     L.ui.innerHTML = ui;
