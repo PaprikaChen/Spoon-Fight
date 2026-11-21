@@ -367,7 +367,7 @@ function create(host, opts) {
 
   // ---- state ----
   S = { t: 0, cash: opts.cash, earned: 0, spent: 0, tip: 0, served: 0, delivered: 0, unhappy: 0, plates: opts.plates, guests: [], couriers: [], floats: [], popups: [],
-    ended: false, open: false, closed: false, nextId: 1, mTime: 0, bus: null, rushed: 0, food: null, modal: null, cards: {}, doneSent: false };
+    ended: false, open: false, closed: false, nextId: 1, mTime: 0, bus: null, rushed: 0, sentHome: 0, food: null, modal: null, cards: {}, doneSent: false };
   S.staff = sections.filter(s => s.on).map(s => ({ sec: s, x: s.home.x, y: s.home.y, path: [], task: null, carry: false, node: el(L.walk, '', { 'pointer-events': 'none' }) }));
   S.chef = { x: STOVE.x, y: STOVE.y, path: [], cur: null, queue: [], carry: false, rush: null, mounted: false, node: el(L.walk, '', { 'pointer-events': 'none' }) };
   S.ride = { node: el(L.walk, '', { 'pointer-events': 'none' }), key: '' };
@@ -871,7 +871,7 @@ function create(host, opts) {
     }
     if (!S.closed && S.t >= dl) {
       S.closed = true; S.sched = S.sched.filter(e => e.kind === 'event'); if (opts.tutorial === 'day1') tutHint('closed', RX + 120, AYc - 40, 'Doors closed. Finish the guests inside.');
-      S.guests.filter(g => g.state === 'arrive' || g.state === 'queue').forEach(g => { if (!g.claimed) leave(g, false); });
+      S.guests.filter(g => g.state === 'arrive' || g.state === 'queue').forEach(g => { if (!g.claimed) { S.sentHome++; leave(g, false); } });
     }
     chefUpdate(dt);
     tutCheck();
@@ -918,7 +918,7 @@ function create(host, opts) {
   }
   function result() { return { served: S.served, delivered: S.delivered, unhappy: S.unhappy, earned: Math.round(S.earned * 100) / 100, rushN: S.rushed, food: S.food }; }
   function showEnd() {
-    const rows = [['Guests served', S.served], ...(S.delivered || S.couriers.length ? [['Delivery orders sent', S.delivered]] : []), ['Left unhappy', S.unhappy],
+    const rows = [['Guests served', S.served], ...(S.delivered || S.couriers.length ? [['Delivery orders sent', S.delivered]] : []), ['Left unhappy', S.unhappy], ...(S.sentHome ? [['Sent home at closing (not unhappy)', S.sentHome]] : []),
       ['Plates left over (they go bad)', S.plates], ['Plates you rushed', S.rushed ? `${S.rushed} (−$${S.spent})` : 0],
       ...Object.entries(S.cards).map(([n, c]) => [n, `${c.came} ${c.kind === 'orders' ? 'orders' : 'guests'}, ${c.served} served`]),
       ['Earned tonight', '+$' + Math.round((S.earned + S.tip) * 100) / 100]];
