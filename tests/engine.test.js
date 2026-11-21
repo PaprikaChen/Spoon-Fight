@@ -278,3 +278,25 @@ console.log(wins, reasons, { avgServed: (stats.served / stats.days).toFixed(2), 
   if (!seen.up || !seen.down || !seen.floor) { console.log('regulars never moved both ways', seen); process.exit(1); }
   console.log('regulars follow the stars OK', seen);
 }
+
+// Events (team, Nov 21): a fight is half as likely as each other event, and at most once per game per player
+{
+  let days = 0, fights = 0, twice = 0;
+  for (let g = 0; g < 1500; g++) {
+    const logs = { p1: [], p2: [] }, seen = {}; let S;
+    for (let i = 0; i < 400; i++) {
+      S = E.simulate('fight' + g, logs); if (S.phase === 'over') break;
+      for (const s of ['p1', 'p2']) { const sc = S.script && S.script[s];
+        if (S.phase === 'service' && sc && !seen[s + S.round]) { seen[s + S.round] = 1; days++; if (sc.mid === 'fight') { fights++; seen[s] = (seen[s] || 0) + 1; } } }
+      const s = S.waiting.p1 ? 'p1' : S.waiting.p2 ? 'p2' : null; if (!s) break; const k = S.waiting[s];
+      logs[s].push({ pick: { k, loc: g % 2 ? 'city' : 'country' }, morning: { k }, invest: { k, staff: [0, 1, 2] }, market: { k, buys: [] },
+        commit: { k, h: E.adHash({ self: [], rival: [] }, 'x'), nSelf: 0, nRival: 0, cost: 0, bump: 0 }, reveal: { k, self: [], rival: [], salt: 'x' },
+        service: S.phase === 'service' ? { k, res: E.autoService(S, s) } : null, voucher: { k, n: 0 }, report: { k } }[S.phase]);
+    }
+    for (const s of ['p1', 'p2']) if ((seen[s] || 0) > 1) twice++;
+  }
+  const rate = fights / days;
+  if (twice) { console.log('a player got more than one fight in a game', twice); process.exit(1); }
+  if (rate < 0.05 || rate > 0.11) { console.log('fight rate off', rate); process.exit(1); }
+  console.log(`events OK: fight on ${(rate * 100).toFixed(1)}% of nights, never twice in a game`);
+}

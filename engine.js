@@ -53,12 +53,13 @@ const CFG = {
   },
   // Service (all TBD). Real time: guests walk in over the day; bunnies seat and serve their section, you do the rest.
   //   rushShare: a rush plate costs this share of what the guest pays (half: you keep your stars, not the profit) (+ corner card extra)
-  //   eventChance: chance of one event per day; food: give → foodGood chance +1 star, refuse → foodBad chance −1 star
+  //   eventChance: chance of one event per day, picked by weight from `events` (team, Nov 21: a fight is half as likely as each
+  //   other event, and at most one fight per game); food: give → foodGood chance +1 star, refuse → foodBad chance −1 star
   //   fightStaff: bunnies hurt in a fight (off for the rest of the day, still paid)
   //   live (page timing, seconds / pixels per second): dayLen, first walk-in, longest gap between walk-ins,
   //   qPat door patience, sPat patience waiting for a plate, cPat courier patience, eat time, walking speeds,
   //   mSpeed rush marker sweeps per second, zone green width (share of the bar), decide seconds for event pop-ups
-  service: { rushShare: 0.5, eventChance: 0.6, foodGood: 0.2, foodBad: 0.5, propose: 0.5, tip: 20, fightStaff: 2, fewer: 3,
+  service: { rushShare: 0.5, eventChance: 0.6, events: { food: 2, fight: 1, propose: 2, outside: 2 }, foodGood: 0.2, foodBad: 0.5, propose: 0.5, tip: 20, fightStaff: 2, fewer: 3,
     live: { dayLen: 120, first: 6, gap: 8, qPat: 30, sPat: 30, cPat: 35, eat: 12, chefSpeed: 160, staffSpeed: 130,
       mSpeed: 0.7, zone: 0.11, decide: 15, tutSeed: 14 },
     // Build screen hints (TBD): about this many guests per bunny without your help; warn when less than foodWarn is left for food
@@ -234,8 +235,12 @@ function prepService(S, s) {
   // The one event of the day (or none)
   let ev = null;
   if (r() < C.eventChance) {
-    const pool = ['food', 'fight', 'propose', p.loc === 'city' ? 'protest' : 'weather'];
-    ev = pool[Math.floor(r() * pool.length)];
+    // weighted pick; once you've had a fight (a note in an earlier day's ledger), no more fights this game
+    const fought = p.history.some(h => h.ledger.some(x => /hurt in a fight/.test(x.label || '')));
+    const pool = Object.entries(C.events).filter(([k]) => !(k === 'fight' && fought)), sum = pool.reduce((a, [, w]) => a + w, 0);
+    let x = r() * sum; ev = pool[pool.length - 1][0];
+    for (const [k, w] of pool) { if (x < w) { ev = k; break; } x -= w; }
+    if (ev === 'outside') ev = p.loc === 'city' ? 'protest' : 'weather';
   }
   sc.event = ev;
   // Shady deals still open tonight: the inspector comes by; deals rolled to be caught tonight are caught
