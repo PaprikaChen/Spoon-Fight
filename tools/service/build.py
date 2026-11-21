@@ -17,7 +17,7 @@ draw += between("function ringSVG(f) {", "// ---------------- static scene -----
 static = between("function buildStatic(hired, mode) {", "const el = (parent, html, attrs = {})")
 # --- turn buildStatic into a pure function: sceneParts(loc, hired, mode, animal, color) ---
 static = static.replace("function buildStatic(hired, mode) {\n  const cols = LOC === 'country' ? 5 : 4;",
-                        "function sceneParts(loc, hired, mode, animal, color) {\n  const cols = loc === 'country' ? 5 : 4;\n  const tables = [], sections = [];")
+                        "function sceneParts(loc, hired, mode, animal, color) {\n  const cols = Math.ceil(sectionCount(loc) / 2);\n  const tables = [], sections = [];")
 static = static.replace("const CITY = LOC === 'city';", "const CITY = loc === 'city';")
 static = static.replace("  tables = []; sections = [];\n", "")
 static = static.replace("staffDraw(true, false)", "staffSVG(true, false)").replace("meDraw(false)", "chefSVG(animal, color, false)")
@@ -27,6 +27,13 @@ static = static[:i] + """  const layers = `<g class="L-plates"></g><g class="L-b
   return { html: g + k + layers, tables, sections };
 }
 """
+# Food run (Nov 20): no stove and no delivery pickup. Out of plates, the chef rides out (bike in the Countryside,
+# electric scooter in the City) from a parking spot where the delivery pickup was; the vehicle itself is drawn live
+# by instance.js (parked, or ridden). Here only the spot, its click area and the kitchen's back door.
+i = static.index('  k += `<g class="click" data-click="stove">'); j = static.index('  // Build mode:', i)
+static = static[:i] + '''  k += `<rect x="${KR - 12}" y="${DY + 30}" width="15" height="70" rx="3" fill="#7A5A40" stroke="${OUT}" stroke-width="2"/><circle cx="${KR - 8}" cy="${DY + 66}" r="2.4" fill="#FFE08A"/>`;
+  k += `<g class="click" data-click="ride"><rect class="hl" x="${KX + 106}" y="${DY - 10}" width="${KR - KX - 122}" height="148" rx="16" fill="none" stroke="#FFE08A" stroke-width="3"/><rect x="${KX + 110}" y="${DY - 6}" width="${KR - KX - 130}" height="140" rx="14" fill="rgba(255,247,236,.55)" stroke="#7A5A40" stroke-width="2" stroke-dasharray="7 5"/></g>`;
+''' + static[j:]
 # The page shows the kitchen note as a hover pop-up instead (app.js hireStage), so drop the fixed note from the plan
 i = static.index("    const nx = KX + 18, ny = RY + 44"); j = static.index("    sections.forEach(sc => { b +=", i)
 static = static[:i] + static[j:]
