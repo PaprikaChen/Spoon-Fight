@@ -10,7 +10,7 @@ It's made for players aged 13 and up, as a fun way to learn the basics of runnin
 
 | Where | Link |
 | --- | --- |
-| **GitHub Pages** | **https://paprikachen.github.io/cs377g_Project3/** |
+| **GitHub Pages** | **https://paprikachen.github.io/Spoon-Fight/** |
 | **itch.io** | **https://paprikachen.itch.io/spoon-fight** |
 
 - **Two players, two devices.** Player 1 creates a room and shares the 4-letter room code (or the invite link). Player 2 types the code and joins. No account needed.
