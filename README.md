@@ -89,6 +89,8 @@ The Countryside has more seats and lower costs. The City has fewer seats, but ea
 
 A team project for CS377G (game design), built through many rounds of playtesting from a first prototype on Nov 4 to the final version on Nov 21, 2026. The game design (rules, numbers and ideas) is the team's own work. The code was written with the help of an AI coding assistant (Claude Code), directed and tested by the team.
 
+**Team:** Paprika Chen, Oluwole Oyetoke, Saharat (Game) Laksanasut, and Emma Keiko Wong.
+
 ## For developers
 
 The game is a static web page (no server of our own). Online play uses Firebase: anonymous sign-in and Firestore.
